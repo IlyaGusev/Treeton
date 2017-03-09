@@ -1,0 +1,7 @@
+queryExample1.txt:responseExample1.txt 
+
+queryExample2.txt:responseExample1.txt 
+
+queryExample1.txt:responseExample2.txt 
+
+queryExample2.txt:responseExample2.txt 

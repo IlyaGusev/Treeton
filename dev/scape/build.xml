@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<!--
+  ~ Copyright Anatoly Starostin (c) 2017.
+  -->
+
+<project name="scape.project" default="help">
+    <import file="buildInfo.xml"/>
+
+    <target name="scape.copylibs">
+        <mkdir dir="${project.libs.dir}"/>
+
+        <copy todir="${project.libs.dir}">
+            <fileset dir="${project.third-party.dir}">
+                <patternset refid="scape.libraries"/>
+            </fileset>
+        </copy>
+    </target>
+
+    <target name="scape.build" depends="scape.compile,scape.copylibs,treetonCore.build"
+            description="Create distribution kit">
+        <pathconvert property="scape.newclasspath" pathsep=" ">
+            <path refid="scape.build.classpath"/>
+            <map from="${project.distrib.dir}${file.separator}" to=""/>
+        </pathconvert>
+
+        <jar destfile="${scape.distrib.jar}">
+            <fileset dir="${scape.module.outputdir}"/>
+            <manifest>
+                <attribute name="Main-Class" value="${scape.mainclass}"/>
+                <attribute name="Class-Path" value="${scape.newclasspath}"/>
+            </manifest>
+        </jar>
+
+        <mkdir dir="${project.distrib.tests.dir}"/>
+
+        <pathconvert property="scape.newtestclasspath" pathsep=" ">
+            <path refid="scape.build.testclasspath"/>
+            <map from="${project.distrib.tests.dir}${file.separator}" to=""/>
+        </pathconvert>
+
+        <pathconvert property="scape.newclasspath_fortests" pathsep=" ">
+            <path refid="scape.build.classpath"/>
+            <path>
+                <pathelement location="${scape.distrib.jar}"/>
+            </path>
+            <map from="${project.distrib.dir}${file.separator}" to="..${file.separator}"/>
+        </pathconvert>
+
+        <!--mkdir dir="${scape.module.testoutputdir}${file.separator}fake"/>
+
+        <jar destfile="${scape.distrib.tests.jar}">
+            <fileset dir="${scape.module.testoutputdir}"/>
+            <manifest>
+                <attribute name="Main-Class" value=""/>
+                <attribute name="Class-Path" value="${scape.newclasspath_fortests} ${scape.newtestclasspath}"/>
+            </manifest>
+        </jar>
+
+        <mkdir dir="${project.distrib.tests.dir}${file.separator}tmp"/>
+        <copy todir="${project.distrib.tests.dir}${file.separator}tmp">
+         <fileset dir="${scape.module.basedir}">
+           <include name="tests${file.separator}*${file.separator}src${file.separator}*${file.separator}**"/>
+         </fileset>
+         <regexpmapper from=".*src(.*)" to="\1" handledirsep="yes"/>
+        </copy>
+
+        <jar destfile="${scape.distrib.tests.src.jar}">
+             <fileset dir="${project.distrib.tests.dir}${file.separator}tmp">
+                <include name="**${file.separator}*.java"/>
+                <patternset excludes="${scape.excludeTestsFromCompile}"/>
+             </fileset>
+        </jar>
+        <delete dir="${project.distrib.tests.dir}${file.separator}tmp"/-->
+
+        <mkdir dir="${project.distrib.src.dir}"/>
+
+        <jar destfile="${scape.distrib.src.jar}">
+            <fileset dir="${scape.module.basedir}${file.separator}src">
+                <include name="**${file.separator}*.java"/>
+                <patternset excludes="${scape.excludeFromCompile}"/>
+            </fileset>
+            <fileset dir="${scape.module.basedir}">
+                <include name="resources${file.separator}**${file.separator}*"/>
+            </fileset>
+        </jar>
+
+        <antcall target="scape.distribTarget"/>
+    </target>
+
+    <target name="scape.compile" depends="treetonCore.compile,scape.setSourceDir"
+            description="Compile module ${scape.module.name}; production classes">
+        <mkdir dir="${scape.module.outputdir}"/>
+
+        <javac destdir="${scape.module.outputdir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}"
+               encoding="${compiler.encoding}"
+               memoryMaximumSize="${compiler.max.memory}" fork="true"
+               srcdir="${scape.module.basedir}${file.separator}src" excludes="${scape.excludeFromCompile}">
+            <compilerarg line="${compiler.args}"/>
+            <classpath refid="scape.classpath"/>
+        </javac>
+
+        <copy todir="${scape.module.outputdir}">
+            <fileset dir="${scape.module.basedir}">
+                <include name="resources${file.separator}**${file.separator}*"/>
+            </fileset>
+        </copy>
+
+        <for list="${scape.sourcedirs}" param="cur">
+            <sequential>
+                <copy todir="${scape.module.outputdir}">
+                    <fileset dir="${scape.module.basedir}${file.separator}@{cur}">
+                        <include name="**${file.separator}*"/>
+                        <exclude name="**${file.separator}*.java"/>
+                    </fileset>
+                </copy>
+            </sequential>
+        </for>
+    </target>
+
+    <available property="scape.testsLocated" file="src" type="dir">
+        <filepath>
+            <dirset dir="${scape.module.basedir}">
+                <include name="tests${file.separator}*${file.separator}"/>
+            </dirset>
+        </filepath>
+    </available>
+
+    <target name="scape.compile.tests" depends="scape.compile,treetonCore.compile.tests"
+            description="compile module ${scape.module.name}; test classes" if="scape.testsLocated">
+        <mkdir dir="${scape.module.testoutputdir}"/>
+        <javac destdir="${scape.module.testoutputdir}" debug="${compiler.debug}"
+               nowarn="${compiler.generate.no.warnings}" encoding="${compiler.encoding}"
+               memoryMaximumSize="${compiler.max.memory}" fork="true" excludes="${scape.excludeTestsFromCompile}">
+            <compilerarg line="${compiler.args}"/>
+            <classpath refid="scape.classpath"/>
+            <classpath refid="scape.testclasspath"/>
+            <classpath location="${scape.module.outputdir}"/>
+            <src>
+                <path>
+                    <dirset dir="${scape.module.basedir}">
+                        <include name="tests${file.separator}*${file.separator}src"/>
+                    </dirset>
+                </path>
+            </src>
+        </javac>
+
+        <path id="scape.toCopyResources">
+            <dirset dir="${scape.module.basedir}">
+                <include name="tests${file.separator}*${file.separator}resources"/>
+            </dirset>
+        </path>
+
+        <for pathref="scape.toCopyResources" param="cur">
+            <sequential>
+                <copy todir="${scape.module.testoutputdir}${file.separator}resources">
+                    <fileset dir="@{cur}"/>
+                </copy>
+            </sequential>
+        </for>
+    </target>
+
+    <target name="scape.run-tests" description="junit tests" depends="scape.compile.tests" if="scape.testsLocated"
+            unless="scape.disableTests">
+        <delete dir="${scape.module.reportsdir}"/>
+        <mkdir dir="${scape.module.reportsdir}${file.separator}raw${file.separator}"/>
+        <mkdir dir="${scape.module.reportsdir}${file.separator}run${file.separator}"/>
+
+        <for pathref="scape.testclasspath" param="cur">
+            <sequential>
+                <junit printsummary="withOutAndErr"
+                       dir="${scape.module.reportsdir}${file.separator}run${file.separator}">
+                    <syspropertyset refid="scape.testProperties"/>
+
+                    <classpath>
+                        <path refid="scape.classpath"/>
+                        <path refid="scape.testclasspath"/>
+                        <pathelement location="${scape.module.outputdir}"/>
+                        <pathelement location="${scape.module.testoutputdir}"/>
+                    </classpath>
+
+                    <batchtest fork="yes" filtertrace="yes"
+                               todir="${scape.module.reportsdir}${file.separator}raw${file.separator}"
+                               if="scape.transitiveTests">
+                        <formatter type="xml"/>
+                        <fileset dir="@{cur}" includes="**${file.separator}*TestCase.class"/>
+                    </batchtest>
+                </junit>
+            </sequential>
+        </for>
+
+        <junit printsummary="withOutAndErr" dir="${scape.module.reportsdir}${file.separator}run${file.separator}">
+            <syspropertyset refid="scape.testProperties"/>
+
+            <classpath>
+                <path refid="scape.classpath"/>
+                <path refid="scape.testclasspath"/>
+                <pathelement location="${scape.module.outputdir}"/>
+                <pathelement location="${scape.module.testoutputdir}"/>
+            </classpath>
+
+            <batchtest fork="yes" filtertrace="yes"
+                       todir="${scape.module.reportsdir}${file.separator}raw${file.separator}">
+                <formatter type="xml"/>
+                <fileset dir="${scape.module.testoutputdir}" includes="**${file.separator}*TestCase.class"/>
+            </batchtest>
+        </junit>
+    </target>
+
+    <target name="scape.test" depends="scape.run-tests" if="scape.testsLocated" unless="scape.disableTests">
+        <junitreport todir="${scape.module.reportsdir}">
+            <fileset dir="${scape.module.reportsdir}${file.separator}raw${file.separator}">
+                <include name="TEST-*.xml"/>
+            </fileset>
+            <report format="frames" todir="${scape.module.reportsdir}${file.separator}html${file.separator}"/>
+        </junitreport>
+    </target>
+
+    <target name="scape.clean" description="cleanup all">
+        <delete dir="${scape.module.outputdir}"/>
+        <delete dir="${scape.module.testoutputdir}"/>
+        <delete dir="${scape.module.reportsdir}"/>
+    </target>
+
+    <target name="clean" depends="scape.clean"/>
+    <target name="build" depends="scape.build"/>
+    <target name="compile" depends="scape.compile"/>
+    <target name="compile.tests" depends="scape.compile.tests"/>
+    <target name="test" depends="scape.test"/>
+
+    <target name="help">
+        <echo message="==============================================================================="/>
+        <echo message="${scape.module.name} module build file help"/>
+        <echo message=""/>
+        <echo message="Please run 'ant target' where target is one of these:"/>
+        <echo message=""/>
+        <echo message="   build             - builds the module"/>
+        <echo message="   clean             - cleans the module, removes all generated files"/>
+        <echo message="   test              - runs tests and generates reports"/>
+        <echo message=""/>
+        <echo message="==============================================================================="/>
+    </target>
+</project>

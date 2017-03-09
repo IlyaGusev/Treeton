@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<!--
+  ~ Copyright Anatoly Starostin (c) 2017.
+  -->
+
+<project name="treetonCore.custom.info" default="nothing">
+    <dirname property="project.basedir" file="${ant.file}${file.separator}..${file.separator}.."/>
+    <import file="../../common.xml"/>
+
+    <patternset id="treetonCore.libraries">
+        <patternset refid="collector.library"/>
+        <!--patternset refid="javatools.library"/-->
+        <patternset refid="junit.library"/>
+        <patternset refid="xerces.library"/>
+        <patternset refid="log4j.library"/>
+    </patternset>
+
+    <property name="treetonCore.deps" value=""/>
+
+    <property name="treetonCore.mainclass" value=""/>
+
+    <property name="treetonCore.excludeFromCompile" value=""/>
+
+    <property name="treetonCore.excludeTestsFromCompile" value=""/>
+
+    <target name="treetonCore.distribTarget">
+        <mkdir dir="${project.distrib.conf.dir}"/>
+        <copy todir="${project.distrib.conf.dir}">
+            <fileset dir="${project.runtime.conf.dir}">
+                <include name="core.xml"/>
+            </fileset>
+        </copy>
+    </target>
+
+    <target name="nothing"/>
+</project>

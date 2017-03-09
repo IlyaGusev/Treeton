@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<!--
+  ~ Copyright Anatoly Starostin (c) 2017.
+  -->
+
+<project name="scape.custom.info" default="nothing">
+    <dirname property="project.basedir" file="${ant.file}${file.separator}..${file.separator}.."/>
+    <import file="../../common.xml"/>
+
+    <patternset id="scape.libraries">
+        <patternset refid="gate.library"/>
+    </patternset>
+
+    <property name="scape.deps" value="treetonCore"/>
+
+    <property name="scape.mainclass" value=""/>
+
+    <property name="scape.excludeFromCompile" value=""/>
+
+    <property name="scape.excludeTestsFromCompile" value=""/>
+
+    <target name="scape.distribTarget"/>
+
+    <target name="nothing"/>
+</project>

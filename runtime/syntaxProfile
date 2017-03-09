@@ -1,0 +1,7 @@
+class treeton.syntax.impl.SyntaxProcessorRunnable
+fullCycle: 299.591497 / 1 = 299.591497 dispersion=0.0
+handleInterpretation: 141.087969 / 267 = 0.5284193595505617 dispersion=4.3668786814720404E11
+countPenalty: 54.140924 / 666 = 0.08129267867867869 dispersion=1.2014541922076933E10
+processInterpretation: 25.947256 / 789 = 0.03288625602027884 dispersion=1.9595747733115696E10
+
+

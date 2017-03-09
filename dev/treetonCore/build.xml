@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<!--
+  ~ Copyright Anatoly Starostin (c) 2017.
+  -->
+
+<project name="treetonCore.project" default="help">
+    <import file="buildInfo.xml"/>
+
+    <target name="treetonCore.copylibs">
+        <mkdir dir="${project.libs.dir}"/>
+
+        <copy todir="${project.libs.dir}">
+            <fileset dir="${project.third-party.dir}">
+                <patternset refid="treetonCore.libraries"/>
+            </fileset>
+        </copy>
+    </target>
+
+    <target name="treetonCore.build" depends="treetonCore.compile,treetonCore.copylibs"
+            description="Create distribution kit">
+        <pathconvert property="treetonCore.newclasspath" pathsep=" ">
+            <path refid="treetonCore.build.classpath"/>
+            <map from="${project.distrib.dir}${file.separator}" to=""/>
+        </pathconvert>
+
+        <jar destfile="${treetonCore.distrib.jar}">
+            <fileset dir="${treetonCore.module.outputdir}"/>
+            <manifest>
+                <attribute name="Main-Class" value="${treetonCore.mainclass}"/>
+                <attribute name="Class-Path" value="${treetonCore.newclasspath}"/>
+            </manifest>
+        </jar>
+
+        <mkdir dir="${project.distrib.tests.dir}"/>
+
+        <pathconvert property="treetonCore.newtestclasspath" pathsep=" ">
+            <path refid="treetonCore.build.testclasspath"/>
+            <map from="${project.distrib.tests.dir}${file.separator}" to=""/>
+        </pathconvert>
+
+        <pathconvert property="treetonCore.newclasspath_fortests" pathsep=" ">
+            <path refid="treetonCore.build.classpath"/>
+            <path>
+                <pathelement location="${treetonCore.distrib.jar}"/>
+            </path>
+            <map from="${project.distrib.dir}${file.separator}" to="..${file.separator}"/>
+        </pathconvert>
+
+        <!--mkdir dir="${treetonCore.module.testoutputdir}${file.separator}fake"/>
+
+        <jar destfile="${treetonCore.distrib.tests.jar}">
+            <fileset dir="${treetonCore.module.testoutputdir}"/>
+            <manifest>
+                <attribute name="Main-Class" value=""/>
+                <attribute name="Class-Path" value="${treetonCore.newclasspath_fortests} ${treetonCore.newtestclasspath}"/>
+            </manifest>
+        </jar>
+
+        <mkdir dir="${project.distrib.tests.dir}${file.separator}tmp"/>
+        <copy todir="${project.distrib.tests.dir}${file.separator}tmp">
+         <fileset dir="${treetonCore.module.basedir}">
+           <include name="tests${file.separator}*${file.separator}src${file.separator}*${file.separator}**"/>
+         </fileset>
+         <regexpmapper from=".*src(.*)" to="\1" handledirsep="yes"/>
+        </copy>
+
+        <jar destfile="${treetonCore.distrib.tests.src.jar}">
+             <fileset dir="${project.distrib.tests.dir}${file.separator}tmp">
+                <include name="**${file.separator}*.java"/>
+                <patternset excludes="${treetonCore.excludeTestsFromCompile}"/>
+             </fileset>
+        </jar>
+        <delete dir="${project.distrib.tests.dir}${file.separator}tmp"/-->
+
+        <mkdir dir="${project.distrib.src.dir}"/>
+
+        <jar destfile="${treetonCore.distrib.src.jar}">
+            <fileset dir="${treetonCore.module.basedir}${file.separator}src">
+                <include name="**${file.separator}*.java"/>
+                <patternset excludes="${treetonCore.excludeFromCompile}"/>
+            </fileset>
+            <fileset dir="${treetonCore.module.basedir}">
+                <include name="resources${file.separator}**${file.separator}*"/>
+            </fileset>
+        </jar>
+
+        <antcall target="treetonCore.distribTarget"/>
+    </target>
+
+    <target name="treetonCore.compile" depends="treetonCore.setSourceDir"
+            description="Compile module ${treetonCore.module.name}; production classes">
+        <mkdir dir="${treetonCore.module.outputdir}"/>
+
+        <javac destdir="${treetonCore.module.outputdir}" debug="${compiler.debug}"
+               nowarn="${compiler.generate.no.warnings}" encoding="${compiler.encoding}"
+               memoryMaximumSize="${compiler.max.memory}" fork="true"
+               srcdir="${treetonCore.module.basedir}${file.separator}src" excludes="${treetonCore.excludeFromCompile}">
+            <compilerarg line="${compiler.args}"/>
+            <classpath refid="treetonCore.classpath"/>
+        </javac>
+
+        <copy todir="${treetonCore.module.outputdir}">
+            <fileset dir="${treetonCore.module.basedir}">
+                <include name="resources${file.separator}**${file.separator}*"/>
+            </fileset>
+        </copy>
+
+        <for list="${treetonCore.sourcedirs}" param="cur">
+            <sequential>
+                <copy todir="${treetonCore.module.outputdir}">
+                    <fileset dir="${treetonCore.module.basedir}${file.separator}@{cur}">
+                        <include name="**${file.separator}*"/>
+                        <exclude name="**${file.separator}*.java"/>
+                    </fileset>
+                </copy>
+            </sequential>
+        </for>
+    </target>
+
+    <available property="treetonCore.testsLocated" file="src" type="dir">
+        <filepath>
+            <dirset dir="${treetonCore.module.basedir}">
+                <include name="tests${file.separator}*${file.separator}"/>
+            </dirset>
+        </filepath>
+    </available>
+
+    <target name="treetonCore.compile.tests" depends="treetonCore.compile"
+            description="compile module ${treetonCore.module.name}; test classes" if="treetonCore.testsLocated">
+        <mkdir dir="${treetonCore.module.testoutputdir}"/>
+        <javac destdir="${treetonCore.module.testoutputdir}" debug="${compiler.debug}"
+               nowarn="${compiler.generate.no.warnings}" encoding="${compiler.encoding}"
+               memoryMaximumSize="${compiler.max.memory}" fork="true" excludes="${treetonCore.excludeTestsFromCompile}">
+            <compilerarg line="${compiler.args}"/>
+            <classpath refid="treetonCore.classpath"/>
+            <classpath refid="treetonCore.testclasspath"/>
+            <classpath location="${treetonCore.module.outputdir}"/>
+            <src>
+                <path>
+                    <dirset dir="${treetonCore.module.basedir}">
+                        <include name="tests${file.separator}*${file.separator}src"/>
+                    </dirset>
+                </path>
+            </src>
+        </javac>
+
+        <path id="treetonCore.toCopyResources">
+            <dirset dir="${treetonCore.module.basedir}">
+                <include name="tests${file.separator}*${file.separator}resources"/>
+            </dirset>
+        </path>
+
+        <for pathref="treetonCore.toCopyResources" param="cur">
+            <sequential>
+                <copy todir="${treetonCore.module.testoutputdir}${file.separator}resources">
+                    <fileset dir="@{cur}"/>
+                </copy>
+            </sequential>
+        </for>
+    </target>
+
+    <target name="treetonCore.run-tests" description="junit tests" depends="treetonCore.compile.tests"
+            if="treetonCore.testsLocated" unless="treetonCore.disableTests">
+        <delete dir="${treetonCore.module.reportsdir}"/>
+        <mkdir dir="${treetonCore.module.reportsdir}${file.separator}raw${file.separator}"/>
+        <mkdir dir="${treetonCore.module.reportsdir}${file.separator}run${file.separator}"/>
+
+        <for pathref="treetonCore.testclasspath" param="cur">
+            <sequential>
+                <junit printsummary="withOutAndErr"
+                       dir="${treetonCore.module.reportsdir}${file.separator}run${file.separator}">
+                    <syspropertyset refid="treetonCore.testProperties"/>
+
+                    <classpath>
+                        <path refid="treetonCore.classpath"/>
+                        <path refid="treetonCore.testclasspath"/>
+                        <pathelement location="${treetonCore.module.outputdir}"/>
+                        <pathelement location="${treetonCore.module.testoutputdir}"/>
+                    </classpath>
+
+                    <batchtest fork="yes" filtertrace="yes"
+                               todir="${treetonCore.module.reportsdir}${file.separator}raw${file.separator}"
+                               if="treetonCore.transitiveTests">
+                        <formatter type="xml"/>
+                        <fileset dir="@{cur}" includes="**${file.separator}*TestCase.class"/>
+                    </batchtest>
+                </junit>
+            </sequential>
+        </for>
+
+        <junit printsummary="withOutAndErr" dir="${treetonCore.module.reportsdir}${file.separator}run${file.separator}">
+            <syspropertyset refid="treetonCore.testProperties"/>
+
+            <classpath>
+                <path refid="treetonCore.classpath"/>
+                <path refid="treetonCore.testclasspath"/>
+                <pathelement location="${treetonCore.module.outputdir}"/>
+                <pathelement location="${treetonCore.module.testoutputdir}"/>
+            </classpath>
+
+            <batchtest fork="yes" filtertrace="yes"
+                       todir="${treetonCore.module.reportsdir}${file.separator}raw${file.separator}">
+                <formatter type="xml"/>
+                <fileset dir="${treetonCore.module.testoutputdir}" includes="**${file.separator}*TestCase.class"/>
+            </batchtest>
+        </junit>
+    </target>
+
+    <target name="treetonCore.test" depends="treetonCore.run-tests" if="treetonCore.testsLocated"
+            unless="treetonCore.disableTests">
+        <junitreport todir="${treetonCore.module.reportsdir}">
+            <fileset dir="${treetonCore.module.reportsdir}${file.separator}raw${file.separator}">
+                <include name="TEST-*.xml"/>
+            </fileset>
+            <report format="frames" todir="${treetonCore.module.reportsdir}${file.separator}html${file.separator}"/>
+        </junitreport>
+    </target>
+
+    <target name="treetonCore.clean" description="cleanup all">
+        <delete dir="${treetonCore.module.outputdir}"/>
+        <delete dir="${treetonCore.module.testoutputdir}"/>
+        <delete dir="${treetonCore.module.reportsdir}"/>
+    </target>
+
+    <target name="clean" depends="treetonCore.clean"/>
+    <target name="build" depends="treetonCore.build"/>
+    <target name="compile" depends="treetonCore.compile"/>
+    <target name="compile.tests" depends="treetonCore.compile.tests"/>
+    <target name="test" depends="treetonCore.test"/>
+
+    <target name="help">
+        <echo message="==============================================================================="/>
+        <echo message="${treetonCore.module.name} module build file help"/>
+        <echo message=""/>
+        <echo message="Please run 'ant target' where target is one of these:"/>
+        <echo message=""/>
+        <echo message="   build             - builds the module"/>
+        <echo message="   clean             - cleans the module, removes all generated files"/>
+        <echo message="   test              - runs tests and generates reports"/>
+        <echo message=""/>
+        <echo message="==============================================================================="/>
+    </target>
+</project>

@@ -1,0 +1,1 @@
+"C:\Program Files (x86)\Java\jdk1.8.0_11\bin\java.exe"  -Dfile.encoding=UTF8  -cp prosody.jar treeton.prosody.corpus.ProsodyCorpusCreationTool %1 %2 MusimatixProsodyChain %3

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<project name="${MODULE_NAME}.custom.info" default="nothing">
+    <dirname property="project.basedir" file="${ant.file}${file.separator}..${file.separator}.."/>
+    <import file="../../common.xml"/>
+
+    <patternset id="${MODULE_NAME}.libraries">
+        <include name=" Here you can specify the list of module libraries. Just remove this string and do it."/>
+        <!--
+          Example:
+
+          <patternset refid="lib1.library"/>
+          <patternset refid="lib2.library"/>
+        -->
+    </patternset>
+
+    <!-- list of dependencies
+      Example:
+
+      <property name="${MODULE_NAME}.deps" value="module1,module2"/>
+    -->
+
+    <property name="${MODULE_NAME}.deps" value=""/>
+
+    <!-- Main class definition
+      Example:
+
+      <property name="${MODULE_NAME}.mainclass" value="com.Starter"/>
+    -->
+
+    <property name="${MODULE_NAME}.mainclass" value=""/>
+
+    <!-- Here you can specify files you want to exclude from the compilation. It is possible to use wildcard patterns.
+      Example:
+
+      <property name="${MODULE_NAME}.excludeFromCompile" value="com/myClass.java, com/myPackage/**"/>
+    -->
+
+    <property name="${MODULE_NAME}.excludeFromCompile" value=""/>
+
+    <!-- Here you can specify files you want to exclude from the compilation of test sources. It is possible to use wildcard patterns.
+      Example:
+
+      <property name="${MODULE_NAME}.excludeFromCompile" value="com/myTestCase.java, com/myTestPackage/**"/>
+    -->
+
+    <property name="${MODULE_NAME}.excludeTestsFromCompile" value=""/>
+
+    <!-- distribTarget executes before build target. It can be used for
+    copying some necessary files to the distribution kit.
+
+    Example:
+    <target name="${MODULE_NAME}.distribTarget"/>
+      <mkdir dir="${project.distrib.conf.dir}"/>
+
+      <copy todir="${project.distrib.conf.dir}">
+        <fileset dir="${project.runtime.conf.dir}">
+          <include name="config.xml"/>
+        </fileset>
+      </copy>
+    </target>
+    -->
+
+    <target name="${MODULE_NAME}.distribTarget"/>
+    
+    <!-- using following property set you can specify some properties that must passed to the junit -->
+
+    <propertyset id="${MODULE_NAME}.testProperties"/>
+
+    <!-- you can uncomment following line to disable running of the tests in this module-->
+
+    <!--
+        <property name="${MODULE_NAME}.disableTests" value="true"/>
+    -->
+
+    <!-- you can uncomment following line to make the system run tests from the module's descendants-->
+
+    <!--
+        <property name="${MODULE_NAME}.transitiveTests" value="true"/>
+    -->
+    <target name="nothing"/>
+</project>

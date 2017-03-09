@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+Class-Path: lib/LingvTools.jar lib/Scape.jar lib/Treeton.jar lib/Treet
+ onGUI.jar lib/gate3classes.zip/gate3classes.zip lib/glf.jar lib/looks
+ -1.2.2.jar lib/Morph.jar lib/MorphApi.jar lib/MorphDictsApplier.jar l
+ ib/RegexpWalker.jar
+Main-Class: treeton.syntax.gui.Starter
+

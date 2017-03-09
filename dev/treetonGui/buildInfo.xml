@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<!--
+  ~ Copyright Anatoly Starostin (c) 2017.
+  -->
+
+<project name="treetonGui.info" default="nothing">
+    <dirname property="project.basedir" file="${ant.file}${file.separator}..${file.separator}.."/>
+    <import file="customBuild.xml"/>
+
+    <for list="${treetonGui.deps}" param="cur">
+        <sequential>
+            <import file="${@{cur}.module.basedir}${file.separator}build.xml"/>
+        </sequential>
+    </for>
+
+    <path id="_treetonGui.classpath"/>
+
+    <for list="${treetonGui.deps}" param="cur">
+        <sequential>
+            <collect pathId="_treetonGui.classpath">
+                <path>
+                    <pathelement location="${@{cur}.module.outputdir}"/>
+                    <path refid="@{cur}.classpath"/>
+                </path>
+            </collect>
+        </sequential>
+    </for>
+
+    <path id="treetonGui.classpath">
+        <fileset dir="${project.third-party.dir}">
+            <patternset refid="treetonGui.libraries"/>
+        </fileset>
+        <path refid="_treetonGui.classpath"/>
+    </path>
+
+
+    <path id="treetonGui.testclasspath"/>
+
+    <for list="${treetonGui.deps}" param="cur">
+        <sequential>
+            <collect pathId="treetonGui.testclasspath">
+                <path>
+                    <pathelement location="${@{cur}.module.testoutputdir}"/>
+                    <path refid="@{cur}.testclasspath"/>
+                </path>
+            </collect>
+        </sequential>
+    </for>
+
+
+    <path id="_treetonGui.build.classpath"/>
+
+    <for list="${treetonGui.deps}" param="cur">
+        <sequential>
+            <collect pathId="_treetonGui.build.classpath">
+                <path>
+                    <pathelement location="${@{cur}.distrib.jar}"/>
+                    <path refid="@{cur}.build.classpath"/>
+                </path>
+            </collect>
+        </sequential>
+    </for>
+
+    <path id="treetonGui.build.classpath">
+        <fileset dir="${project.libs.dir}">
+            <patternset refid="treetonGui.libraries"/>
+        </fileset>
+        <path refid="_treetonGui.build.classpath"/>
+    </path>
+
+    <path id="treetonGui.build.testclasspath"/>
+
+    <for list="${treetonGui.deps}" param="cur">
+        <sequential>
+            <collect pathId="treetonGui.build.testclasspath">
+                <path>
+                    <pathelement location="${@{cur}.distrib.tests.jar}"/>
+                    <path refid="@{cur}.build.testclasspath"/>
+                </path>
+            </collect>
+        </sequential>
+    </for>
+
+    <dirset id="treetonGui.sourcedirset" dir="${treetonGui.module.basedir}"/>
+
+    <for list="${treetonGui.sourcedirs}" param="cur">
+        <sequential>
+            <collect dirsetId="treetonGui.sourcedirset">
+                <patternset>
+                    <include name="@{cur}"/>
+                </patternset>
+            </collect>
+        </sequential>
+    </for>
+
+    <target name="treetonGui.findSourceDir">
+        <condition property="treetonGui.multiSourcesSpecified">
+            <and>
+                <isset property="treetonGui.sourcedirs"/>
+            </and>
+        </condition>
+    </target>
+
+    <target name="treetonGui.setSourceDir" depends="treetonGui.findSourceDir" unless="treetonGui.multiSourcesSpecified">
+        <collect dirsetId="treetonGui.sourcedirset">
+            <patternset>
+                <include name="src"/>
+            </patternset>
+        </collect>
+        <property name="treetonGui.sourcedirs" value="src"/>
+    </target>
+
+    <target name="nothing"/>
+</project>

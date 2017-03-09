@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<project name="Treeton" default="help">
+    <import file="common.xml"/>
+    <for list="${modules.list}" param="cur">
+      <sequential>
+        <import file="${@{cur}.module.basedir}${file.separator}build.xml"/>
+      </sequential>
+    </for>
+
+    <target name="all" depends="prepare,clean,build,test"/>
+
+    <target name="prepare">
+        <mkdir dir="${project.distrib.dir}" />
+    </target> 
+
+    <target name="build" depends="lingvToolsRu.build,scape.build,lingvTools.build,treetonGui.build,treetonCore.build,treetonRus.build"/>
+
+    <target name="compile" depends="lingvToolsRu.compile,scape.compile,lingvTools.compile,treetonGui.compile,treetonCore.compile,treetonRus.compile"/>
+
+    <target name="test" depends="lingvToolsRu.test,scape.test,lingvTools.test,treetonGui.test,treetonCore.test,treetonRus.test"/>
+
+    <target name="compile.tests" depends="lingvToolsRu.compile.tests,scape.compile.tests,lingvTools.compile.tests,treetonGui.compile.tests,treetonCore.compile.tests,treetonRus.compile.tests"/>
+
+    <target name="clean" depends="lingvToolsRu.clean,scape.clean,lingvTools.clean,treetonGui.clean,treetonCore.clean,treetonRus.clean">
+        <delete includeemptydirs="true">
+            <fileset dir="${project.distrib.dir}" includes="**/*"/>
+        </delete>
+    </target>
+
+    <target name="update.libs" depends="update.libs.ontosminer"/>
+
+    <target name="update.libs.ontosminer">
+        <for list="OntosOFA,OntosOFAUtils,SyncClient,SyncServer,Utils" param="cur">
+          <sequential>
+              <copy todir="${project.third-party.ontosofa.dir}">
+                  <fileset dir="${external.ontosminer.distrib.dir}" includes="@{cur}.jar"/>
+              </copy>
+              <copy todir="${project.third-party.ontosofa.src.dir}">
+                  <fileset dir="${external.ontosminer.distrib.src.dir}" includes="@{cur}.src.jar"/>
+              </copy>
+          </sequential>
+        </for>
+    </target>
+
+
+    <target name="help">
+        <echo message="===============================================================================" />
+        <echo message="Treeton build file help" />
+        <echo message="" />
+        <echo message="Please run 'ant target' where target is one of these:" />
+        <echo message="" />
+        <echo message="   build             - builds the project" />
+        <echo message="   clean             - cleans the project output, removes all generated files" />
+        <echo message="   test              - runs all tests in all modules and generates reports" />
+        <echo message="   compile.tests     - compiles all tests in all modules" />
+        <echo message="   compile           - compiles all modules (without tests)" />
+        <echo message="" />
+        <echo message="===============================================================================" />
+    </target>
+</project>

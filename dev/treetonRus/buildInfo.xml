@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<!--
+  ~ Copyright Anatoly Starostin (c) 2017.
+  -->
+
+<project name="treetonRus.info" default="nothing">
+    <dirname property="project.basedir" file="${ant.file}${file.separator}..${file.separator}.."/>
+    <import file="customBuild.xml"/>
+
+    <for list="${treetonRus.deps}" param="cur">
+        <sequential>
+            <import file="${@{cur}.module.basedir}${file.separator}build.xml"/>
+        </sequential>
+    </for>
+
+    <path id="_treetonRus.classpath"/>
+
+    <for list="${treetonRus.deps}" param="cur">
+        <sequential>
+            <collect pathId="_treetonRus.classpath">
+                <path>
+                    <pathelement location="${@{cur}.module.outputdir}"/>
+                    <path refid="@{cur}.classpath"/>
+                </path>
+            </collect>
+        </sequential>
+    </for>
+
+    <path id="treetonRus.classpath">
+        <fileset dir="${project.third-party.dir}">
+            <patternset refid="treetonRus.libraries"/>
+        </fileset>
+        <path refid="_treetonRus.classpath"/>
+    </path>
+
+
+    <path id="treetonRus.testclasspath"/>
+
+    <for list="${treetonRus.deps}" param="cur">
+        <sequential>
+            <collect pathId="treetonRus.testclasspath">
+                <path>
+                    <pathelement location="${@{cur}.module.testoutputdir}"/>
+                    <path refid="@{cur}.testclasspath"/>
+                </path>
+            </collect>
+        </sequential>
+    </for>
+
+
+    <path id="_treetonRus.build.classpath"/>
+
+    <for list="${treetonRus.deps}" param="cur">
+        <sequential>
+            <collect pathId="_treetonRus.build.classpath">
+                <path>
+                    <pathelement location="${@{cur}.distrib.jar}"/>
+                    <path refid="@{cur}.build.classpath"/>
+                </path>
+            </collect>
+        </sequential>
+    </for>
+
+    <path id="treetonRus.build.classpath">
+        <fileset dir="${project.libs.dir}">
+            <patternset refid="treetonRus.libraries"/>
+        </fileset>
+        <path refid="_treetonRus.build.classpath"/>
+    </path>
+
+    <path id="treetonRus.build.testclasspath"/>
+
+    <for list="${treetonRus.deps}" param="cur">
+        <sequential>
+            <collect pathId="treetonRus.build.testclasspath">
+                <path>
+                    <pathelement location="${@{cur}.distrib.tests.jar}"/>
+                    <path refid="@{cur}.build.testclasspath"/>
+                </path>
+            </collect>
+        </sequential>
+    </for>
+
+    <dirset id="treetonRus.sourcedirset" dir="${treetonRus.module.basedir}"/>
+
+    <for list="${treetonRus.sourcedirs}" param="cur">
+        <sequential>
+            <collect dirsetId="treetonRus.sourcedirset">
+                <patternset>
+                    <include name="@{cur}"/>
+                </patternset>
+            </collect>
+        </sequential>
+    </for>
+
+    <target name="treetonRus.findSourceDir">
+        <condition property="treetonRus.multiSourcesSpecified">
+            <and>
+                <isset property="treetonRus.sourcedirs"/>
+            </and>
+        </condition>
+    </target>
+
+    <target name="treetonRus.setSourceDir" depends="treetonRus.findSourceDir" unless="treetonRus.multiSourcesSpecified">
+        <collect dirsetId="treetonRus.sourcedirset">
+            <patternset>
+                <include name="src"/>
+            </patternset>
+        </collect>
+        <property name="treetonRus.sourcedirs" value="src"/>
+    </target>
+
+    <target name="nothing"/>
+</project>

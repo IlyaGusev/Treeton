@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<!--
+  ~ Copyright Anatoly Starostin (c) 2017.
+  -->
+
+<project name="treetonRus.custom.info" default="nothing">
+    <dirname property="project.basedir" file="${ant.file}${file.separator}..${file.separator}.."/>
+    <import file="../../common.xml"/>
+
+    <patternset id="treetonRus.libraries">
+        <patternset refid="morph.library"/>
+    </patternset>
+
+    <property name="treetonRus.deps" value="treetonCore,treetonGui,lingvTools,lingvToolsRu"/>
+
+    <property name="treetonRus.mainclass" value="treeton.gui.Starter"/>
+
+    <property name="treetonRus.excludeFromCompile" value=""/>
+
+    <property name="treetonRus.excludeTestsCompile" value=""/>
+
+    <target name="treetonRus.distribTarget">
+        <mkdir dir="${project.distrib.conf.dir}"/>
+
+        <copy todir="${project.distrib.conf.dir}">
+            <fileset dir="${project.runtime.conf.dir}">
+                <include name="morph.xml"/>
+            </fileset>
+        </copy>
+
+        <mkdir dir="${project.distrib.domains.dir}"/>
+
+        <copy todir="${project.distrib.domains.dir}">
+            <fileset dir="${project.runtime.domains.dir}">
+                <patternset refid="common.domain"/>
+                <patternset refid="russian.domain"/>
+                <patternset refid="runtime.context"/>
+            </fileset>
+        </copy>
+    </target>
+
+    <target name="nothing"/>
+</project>

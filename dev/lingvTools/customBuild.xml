@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<!--
+  ~ Copyright Anatoly Starostin (c) 2017.
+  -->
+
+<project name="lingvTools.custom.info" default="nothing">
+    <dirname property="project.basedir" file="${ant.file}${file.separator}..${file.separator}.."/>
+    <import file="../../common.xml"/>
+
+    <patternset id="lingvTools.libraries">
+        <patternset refid="gate.library"/>
+        <patternset refid="javatools.library"/>
+    </patternset>
+
+    <property name="lingvTools.deps" value="treetonCore,scape"/>
+
+    <property name="lingvTools.mainclass" value=""/>
+
+    <property name="lingvTools.excludeFromCompile" value=""/>
+
+    <property name="lingvTools.excludeTestsFromCompile" value=""/>
+
+    <target name="lingvTools.distribTarget"/>
+
+    <target name="nothing"/>
+</project>

@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<!--
+  ~ Copyright Anatoly Starostin (c) 2017.
+  -->
+
+<project name="lingvToolsRu.info" default="nothing">
+    <dirname property="project.basedir" file="${ant.file}${file.separator}..${file.separator}.."/>
+    <import file="customBuild.xml"/>
+
+    <for list="${lingvToolsRu.deps}" param="cur">
+        <sequential>
+            <import file="${@{cur}.module.basedir}${file.separator}build.xml"/>
+        </sequential>
+    </for>
+
+    <path id="_lingvToolsRu.classpath"/>
+
+    <for list="${lingvToolsRu.deps}" param="cur">
+        <sequential>
+            <collect pathId="_lingvToolsRu.classpath">
+                <path>
+                    <pathelement location="${@{cur}.module.outputdir}"/>
+                    <path refid="@{cur}.classpath"/>
+                </path>
+            </collect>
+        </sequential>
+    </for>
+
+    <path id="lingvToolsRu.classpath">
+        <fileset dir="${project.third-party.dir}">
+            <patternset refid="lingvToolsRu.libraries"/>
+        </fileset>
+        <path refid="_lingvToolsRu.classpath"/>
+    </path>
+
+
+    <path id="lingvToolsRu.testclasspath"/>
+
+    <for list="${lingvToolsRu.deps}" param="cur">
+        <sequential>
+            <collect pathId="lingvToolsRu.testclasspath">
+                <path>
+                    <pathelement location="${@{cur}.module.testoutputdir}"/>
+                    <path refid="@{cur}.testclasspath"/>
+                </path>
+            </collect>
+        </sequential>
+    </for>
+
+
+    <path id="_lingvToolsRu.build.classpath"/>
+
+    <for list="${lingvToolsRu.deps}" param="cur">
+        <sequential>
+            <collect pathId="_lingvToolsRu.build.classpath">
+                <path>
+                    <pathelement location="${@{cur}.distrib.jar}"/>
+                    <path refid="@{cur}.build.classpath"/>
+                </path>
+            </collect>
+        </sequential>
+    </for>
+
+    <path id="lingvToolsRu.build.classpath">
+        <fileset dir="${project.libs.dir}">
+            <patternset refid="lingvToolsRu.libraries"/>
+        </fileset>
+        <path refid="_lingvToolsRu.build.classpath"/>
+    </path>
+
+    <path id="lingvToolsRu.build.testclasspath"/>
+
+    <for list="${lingvToolsRu.deps}" param="cur">
+        <sequential>
+            <collect pathId="lingvToolsRu.build.testclasspath">
+                <path>
+                    <pathelement location="${@{cur}.distrib.tests.jar}"/>
+                    <path refid="@{cur}.build.testclasspath"/>
+                </path>
+            </collect>
+        </sequential>
+    </for>
+
+    <dirset id="lingvToolsRu.sourcedirset" dir="${lingvToolsRu.module.basedir}"/>
+
+    <for list="${lingvToolsRu.sourcedirs}" param="cur">
+        <sequential>
+            <collect dirsetId="lingvToolsRu.sourcedirset">
+                <patternset>
+                    <include name="@{cur}"/>
+                </patternset>
+            </collect>
+        </sequential>
+    </for>
+
+    <target name="lingvToolsRu.findSourceDir">
+        <condition property="lingvToolsRu.multiSourcesSpecified">
+            <and>
+                <isset property="lingvToolsRu.sourcedirs"/>
+            </and>
+        </condition>
+    </target>
+
+    <target name="lingvToolsRu.setSourceDir" depends="lingvToolsRu.findSourceDir"
+            unless="lingvToolsRu.multiSourcesSpecified">
+        <collect dirsetId="lingvToolsRu.sourcedirset">
+            <patternset>
+                <include name="src"/>
+            </patternset>
+        </collect>
+        <property name="lingvToolsRu.sourcedirs" value="src"/>
+    </target>
+
+    <target name="nothing"/>
+</project>

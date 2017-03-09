@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<!--
+  ~ Copyright Anatoly Starostin (c) 2017.
+  -->
+
+<project name="treetonGui.custom.info" default="nothing">
+    <dirname property="project.basedir" file="${ant.file}${file.separator}..${file.separator}.."/>
+    <import file="../../common.xml"/>
+
+    <patternset id="treetonGui.libraries">
+        <patternset refid="looks.library"/>
+        <patternset refid="glf.library"/>
+        <patternset refid="swingx.library"/>
+    </patternset>
+
+    <property name="treetonGui.deps" value="treetonCore,scape"/>
+
+    <property name="treetonGui.mainclass" value=""/>
+
+    <property name="treetonGui.excludeFromCompile" value=""/>
+
+    <property name="treetonGui.excludeTestsFromCompile" value=""/>
+
+    <target name="treetonGui.distribTarget"/>
+
+    <target name="nothing"/>
+</project>

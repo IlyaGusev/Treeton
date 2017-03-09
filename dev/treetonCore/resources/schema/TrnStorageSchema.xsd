@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright Anatoly Starostin (c) 2017.
+  -->
+
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns="http://starling.rinet.ru/treeton"
+           targetNamespace="http://starling.rinet.ru/treeton" elementFormDefault="qualified">
+    <xs:simpleType name="ParentConnectionType">
+        <xs:restriction base="xs:string">
+            <xs:pattern value="s|w|p"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:complexType name="InternalNodeType">
+        <xs:sequence>
+            <xs:element name="nd" minOccurs="0" maxOccurs="unbounded" type="InternalNodeType"/>
+        </xs:sequence>
+        <xs:attribute name="ref" type="xs:string" use="required"/>
+        <xs:attribute name="relType" type="xs:string" use="required"/>
+    </xs:complexType>
+    <xs:element name="Document">
+        <xs:complexType>
+            <xs:sequence minOccurs="0" maxOccurs="unbounded">
+                <xs:choice>
+                    <xs:element name="tok">
+                        <xs:complexType>
+                            <xs:sequence>
+                                <xs:element name="attrs" minOccurs="0" maxOccurs="1">
+                                    <xs:complexType>
+                                        <xs:anyAttribute processContents="lax"/>
+                                    </xs:complexType>
+                                </xs:element>
+                            </xs:sequence>
+                            <xs:attribute name="type" type="xs:string" use="required"/>
+                            <xs:attribute name="text" type="xs:string" use="required"/>
+                            <xs:attribute name="uri" type="xs:string" use="required"/>
+                            <xs:attribute name="length" type="xs:double" use="required"/>
+                        </xs:complexType>
+                    </xs:element>
+                    <xs:element name="trn">
+                        <xs:complexType>
+                            <xs:sequence>
+                                <xs:element name="attrs" minOccurs="0" maxOccurs="1">
+                                    <xs:complexType>
+                                        <xs:anyAttribute processContents="lax"/>
+                                    </xs:complexType>
+                                </xs:element>
+                                <xs:element name="nd" minOccurs="0" maxOccurs="unbounded">
+                                    <xs:complexType>
+                                        <xs:sequence>
+                                            <xs:element name="nd" minOccurs="0" maxOccurs="unbounded"
+                                                        type="InternalNodeType"/>
+                                        </xs:sequence>
+                                        <xs:attribute name="ref" type="xs:string" use="required"/>
+                                        <xs:attribute name="pcon" type="ParentConnectionType" use="optional"/>
+                                    </xs:complexType>
+                                </xs:element>
+                            </xs:sequence>
+                            <xs:attribute name="type" type="xs:string" use="required"/>
+                            <xs:attribute name="uri" type="xs:string" use="required"/>
+                            <xs:attribute name="start" type="xs:string" use="optional"/>
+                            <xs:attribute name="end" type="xs:string" use="optional"/>
+                            <xs:attribute name="hidden" type="xs:boolean" use="optional"/>
+                            <xs:attribute name="opened" type="xs:boolean" use="optional"/>
+                        </xs:complexType>
+                    </xs:element>
+                </xs:choice>
+            </xs:sequence>
+            <xs:attribute name="storageURI" type="xs:string" use="optional"/>
+        </xs:complexType>
+    </xs:element>
+</xs:schema>

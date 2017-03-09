@@ -1,0 +1,1 @@
+"C:\Program Files (x86)\Java\jdk1.8.0_11\bin\java.exe"  -Dfile.encoding=UTF8  -cp prosody.jar treeton.prosody.musimatix.VerseProcessingTool --distance verseProcessing.properties %*

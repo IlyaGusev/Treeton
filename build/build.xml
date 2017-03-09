@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<project name="build.project" default="help">
+  <dirname property="project.basedir" file="${ant.file}${file.separator}.."/>
+  <import file="../common.xml"/>
+  <for list="${modules.list}" param="cur">
+    <sequential>
+      <import file="${@{cur}.module.basedir}${file.separator}customBuild.xml"/>
+    </sequential>
+  </for>
+
+
+  <target name="updateBuildScripts">
+   <for list="${modules.list}" param="cur">
+     <sequential>
+        <available file="${project.basedir}${file.separator}dev${file.separator}@{cur}${file.separator}WEB-INF" type="dir" property="@{cur}.isWeb"/>
+        <copy todir="${project.basedir}${file.separator}dev${file.separator}@{cur}" overwrite="true">
+            <fileset dir="${project.basedir}${file.separator}build${file.separator}templates">
+                <include name=" doesn't matter"/>
+                <include name="build.xml" unless="@{cur}.isWeb"/>
+                <include name="buildInfo.xml" unless="@{cur}.isWeb"/>
+            </fileset>
+            <fileset dir="${project.basedir}${file.separator}build${file.separator}templates${file.separator}web">
+                <include name=" doesn't matter"/>
+                <include name="build.xml" if="@{cur}.isWeb"/>
+                <include name="buildInfo.xml" if="@{cur}.isWeb"/>
+            </fileset>
+        </copy>
+        <replace token="$${MODULE_NAME}" value="@{cur}" dir="${project.basedir}${file.separator}dev${file.separator}@{cur}">
+           <include name="build.xml"/>
+           <include name="buildInfo.xml"/>
+        </replace>
+        <stringreplace regexp="([a-zA-Z0-9 ]+)(,|$)" replacestring="$1.compile$2" string="${@{cur}.deps}" property="@{cur}.deps.compile"/>
+        <stringreplace regexp="([a-zA-Z0-9 ]+)(,|$)" replacestring="$1.compile.tests$2" string="${@{cur}.deps}" property="@{cur}.deps.compile.tests"/>
+        <stringreplace regexp="([a-zA-Z0-9 ]+)(,|$)" replacestring="$1.build$2" string="${@{cur}.deps}" property="@{cur}.deps.build"/>
+        <replace token="$${DEPS_COMPILE}" value="${@{cur}.deps.compile}" dir="${project.basedir}${file.separator}dev${file.separator}@{cur}">
+           <include name="build.xml"/>
+        </replace>
+         <replace token="&quot;," value="&quot;" dir="${project.basedir}${file.separator}dev${file.separator}@{cur}">
+            <include name="build.xml"/>
+         </replace>
+
+        <replace token="$${DEPS_COMPILE_TESTS}" value="${@{cur}.deps.compile.tests}" dir="${project.basedir}${file.separator}dev${file.separator}@{cur}">
+           <include name="build.xml"/>
+        </replace>
+        <replace token="$${DEPS_BUILD}" value="${@{cur}.deps.build}" dir="${project.basedir}${file.separator}dev${file.separator}@{cur}">
+           <include name="build.xml"/>
+        </replace>
+        <replace token=",&quot;" value="&quot;" dir="${project.basedir}${file.separator}dev${file.separator}@{cur}">
+           <include name="build.xml"/>
+        </replace>
+
+         <replace token=",&quot;" value="&quot;" dir="${project.basedir}${file.separator}dev${file.separator}@{cur}">
+            <include name="build.xml"/>
+         </replace>
+         
+      </sequential>
+    </for>
+
+    <stringreplace regexp="([a-zA-Z0-9 ]+)(,|$)" replacestring="$1.compile$2" string="${modules.list}" property="modules.list.compile"/>
+    <stringreplace regexp="([a-zA-Z0-9 ]+)(,|$)" replacestring="$1.compile.tests$2" string="${modules.list}" property="modules.list.compile.tests"/>
+    <stringreplace regexp="([a-zA-Z0-9 ]+)(,|$)" replacestring="$1.build$2" string="${modules.list}" property="modules.list.build"/>
+    <stringreplace regexp="([a-zA-Z0-9 ]+)(,|$)" replacestring="$1.test$2" string="${modules.list}" property="modules.list.test"/>
+    <stringreplace regexp="([a-zA-Z0-9 ]+)(,|$)" replacestring="$1.clean$2" string="${modules.list}" property="modules.list.clean"/>
+ 
+    <replaceregexp file="${project.basedir}${file.separator}build.xml"
+                         match="&lt;target name=&quot;build&quot; depends=&quot;.*&quot;"
+                         replace="&lt;target name=&quot;build&quot; depends=&quot;${modules.list.build}&quot;"
+                         byline="true"/>
+    <replaceregexp file="${project.basedir}${file.separator}build.xml"
+                         match="&lt;target name=&quot;compile&quot; depends=&quot;.*&quot;"
+                         replace="&lt;target name=&quot;compile&quot; depends=&quot;${modules.list.compile}&quot;"
+                         byline="true"/>
+    <replaceregexp file="${project.basedir}${file.separator}build.xml"
+                         match="&lt;target name=&quot;compile.tests&quot; depends=&quot;.*&quot;"
+                         replace="&lt;target name=&quot;compile.tests&quot; depends=&quot;${modules.list.compile.tests}&quot;"
+                         byline="true"/>
+    <replaceregexp file="${project.basedir}${file.separator}build.xml"
+                         match="&lt;target name=&quot;test&quot; depends=&quot;.*&quot;"
+                         replace="&lt;target name=&quot;test&quot; depends=&quot;${modules.list.test}&quot;"
+                         byline="true"/>
+    <replaceregexp file="${project.basedir}${file.separator}build.xml"
+                         match="&lt;target name=&quot;clean&quot; depends=&quot;.*&quot;"
+                         replace="&lt;target name=&quot;clean&quot; depends=&quot;${modules.list.clean}&quot;"
+                         byline="true"/>
+    <replace token=",&quot;" value="&quot;" dir="${project.basedir}${file.separator}">
+        <include name="build.xml"/>
+    </replace>
+  </target>
+
+    <target name="prepareResources" if="createResources">
+        <for list="${moduleNames}" param="cur">
+            <sequential>
+                <mkdir dir="${project.basedir}${file.separator}dev${file.separator}@{cur}${file.separator}resources"/>
+            </sequential>
+        </for>
+    </target>
+
+    <target name="addJavaModules" depends="prepareResources">
+        <for list="${moduleNames}" param="cur">
+            <sequential>
+                <mkdir dir="${project.basedir}${file.separator}dev${file.separator}@{cur}"/>
+                <mkdir dir="${project.basedir}${file.separator}dev${file.separator}@{cur}${file.separator}src"/>
+
+                <copy todir="${project.basedir}${file.separator}dev${file.separator}@{cur}" overwrite="true">
+                    <fileset dir="${project.basedir}${file.separator}build${file.separator}templates">
+                        <include name="customBuild.xml" if="replaceCustomBuild"/>
+                    </fileset>
+                </copy>
+                <replace token="$${MODULE_NAME}" value="@{cur}" dir="${project.basedir}${file.separator}dev${file.separator}@{cur}">
+                    <include name="customBuild.xml" if="replaceCustomBuild"/>
+                </replace>
+
+                <replace token="&lt;property name=&quot;modules.list&quot; value=&quot;" value="&lt;property name=&quot;modules.list&quot; value=&quot;@{cur}," file="${project.basedir}${file.separator}common.xml" summary="true"/>
+            </sequential>
+        </for>
+
+	<exec executable="cmd">
+	   <arg value="/c"/>
+	   <arg value="ant"/>
+	   <arg value="updateBuildScripts"/>
+        </exec>
+    </target>
+
+    <target name="addJavaWebModules" depends="prepareResources">
+        <for list="${moduleNames}" param="cur">
+            <sequential>
+                <mkdir dir="${project.basedir}${file.separator}dev${file.separator}@{cur}"/>
+                <mkdir dir="${project.basedir}${file.separator}dev${file.separator}@{cur}${file.separator}src"/>
+
+                <copy todir="${project.basedir}${file.separator}dev${file.separator}@{cur}" overwrite="true">
+                    <fileset dir="${project.basedir}${file.separator}build${file.separator}templates${file.separator}web">
+                        <include name="customBuild.xml" if="replaceCustomBuild"/>
+                    </fileset>
+                </copy>
+                <replace token="$${MODULE_NAME}" value="@{cur}" dir="${project.basedir}${file.separator}dev${file.separator}@{cur}">
+                    <include name="customBuild.xml" if="replaceCustomBuild"/>
+                </replace>
+                <replace token="&lt;property name=&quot;modules.list&quot; value=&quot;" value="&lt;property name=&quot;modules.list&quot; value=&quot;@{cur}," file="${project.basedir}${file.separator}common.xml" summary="true"/>
+            </sequential>
+        </for>
+
+	<exec executable="cmd">
+	   <arg value="/c"/>
+	   <arg value="ant"/>
+	   <arg value="updateBuildScripts"/>
+        </exec>
+    </target>
+
+    <target name="help">
+        <echo message="===============================================================================" />
+        <echo message="Treeton build file help" />
+        <echo message="" />
+        <echo message="Please run 'ant target' where target is one of these:" />
+        <echo message="" />
+        <echo message="   addJavaModules    - creates necessary scripts and folders for the new java module" />
+        <echo message="                       usage: ant addJavaModules -DmoduleNames=&quot;module1,module2...,moduleN&quot;"/>
+        <echo message="                                                [-DcreateResources=true]"/>
+        <echo message="                                                [-DreplaceCustomBuild=true]"/>
+        <echo message="   addJavaWebModules    - creates necessary scripts and folders for the new java web module" />
+        <echo message="                       usage: ant addJavaWebModules -DmoduleNames=&quot;module1,module2...,moduleN&quot;"/>
+        <echo message="                                                [-DcreateResources=true]"/>
+        <echo message="                                                [-DreplaceCustomBuild=true]"/>
+        <echo message="   updateBuildScripts   - updates all necessary scrpits for all modules using templates. " />
+        <echo message="" />
+        <echo message="===============================================================================" />
+    </target>
+
+</project>

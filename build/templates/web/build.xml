@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<project name="${MODULE_NAME}.project" default="help">
+    <import file="buildInfo.xml"/>
+
+    <target name="${MODULE_NAME}.copylibs">
+        <mkdir dir="${project.libs.dir}"/>
+
+        <copy todir="${project.libs.dir}">
+            <fileset dir="${project.third-party.dir}">
+                <patternset refid="${MODULE_NAME}.libraries"/>
+            </fileset>
+        </copy>
+    </target>
+
+    <target name="${MODULE_NAME}.build" depends="${MODULE_NAME}.compile,${MODULE_NAME}.copylibs,${DEPS_BUILD}" description="Create distribution kit">
+        <pathconvert property="${MODULE_NAME}.newclasspath" pathsep=" ">
+            <path refid="${MODULE_NAME}.build.classpath"/>
+            <map from="${project.distrib.dir}${file.separator}" to=""/>
+        </pathconvert>
+
+        <mkdir dir="${project.distrib.web.dir}"/>
+        <mkdir dir="${project.distrib.web.dir}${file.separator}_${MODULE_NAME}_tmp"/>
+        <copy todir="${project.distrib.web.dir}${file.separator}_${MODULE_NAME}_tmp" flatten="true">
+          <fileset dir="${project.distrib.dir}" includes="${${MODULE_NAME}.newclasspath}"/>
+        </copy>
+
+        <war destfile="${${MODULE_NAME}.distrib.war}" webxml="${${MODULE_NAME}.module.basedir}${file.separator}WEB-INF/web.xml">
+            <classes dir="${${MODULE_NAME}.module.outputdir}"/>
+            <lib dir="${project.distrib.web.dir}${file.separator}_${MODULE_NAME}_tmp"/>
+            <manifest>
+                <attribute name="Main-Class" value="${${MODULE_NAME}.mainclass}"/>
+                <!--attribute name="Class-Path" value="${${MODULE_NAME}.newclasspath}"/-->
+            </manifest>
+            <fileset dir="${${MODULE_NAME}.module.basedir}${file.separator}resources"/>
+        </war>
+        <delete dir="${project.distrib.web.dir}${file.separator}_${MODULE_NAME}_tmp"/>
+
+        <mkdir dir="${project.distrib.tests.dir}"/>
+
+        <pathconvert property="${MODULE_NAME}.newtestclasspath" pathsep=" ">
+            <path refid="${MODULE_NAME}.build.testclasspath"/>
+            <map from="${project.distrib.tests.dir}${file.separator}" to=""/>
+        </pathconvert>
+
+        <pathconvert property="${MODULE_NAME}.newclasspath_fortests" pathsep=" ">
+            <path refid="${MODULE_NAME}.build.classpath"/>
+            <path>
+               <pathelement location="${${MODULE_NAME}.distrib.jar}"/>
+            </path>
+            <map from="${project.distrib.dir}${file.separator}" to="..${file.separator}"/>
+        </pathconvert>
+
+        <!-- jar destfile="${${MODULE_NAME}.distrib.tests.jar}">
+            <fileset dir="${${MODULE_NAME}.module.testoutputdir}"/>
+            <manifest>
+                <attribute name="Main-Class" value=""/>
+                <attribute name="Class-Path" value="${${MODULE_NAME}.newclasspath_fortests} ${${MODULE_NAME}.newtestclasspath}"/>
+            </manifest>
+        </jar>
+
+        <mkdir dir="${project.distrib.tests.dir}${file.separator}tmp"/>
+        <copy todir="${project.distrib.tests.dir}${file.separator}tmp">
+         <fileset dir="${${MODULE_NAME}.module.basedir}">
+           <include name="tests${file.separator}*${file.separator}src${file.separator}*${file.separator}**"/>
+         </fileset>
+         <regexpmapper from=".*src(.*)" to="\1" handledirsep="yes"/>
+        </copy>
+
+        <jar destfile="${${MODULE_NAME}.distrib.tests.src.jar}">
+             <fileset dir="${project.distrib.tests.dir}${file.separator}tmp">
+                <include name="**${file.separator}*.java"/>
+                <patternset excludes="${${MODULE_NAME}.excludeTestsFromCompile}"/>
+             </fileset>
+        </jar>
+        <delete dir="${project.distrib.tests.dir}${file.separator}tmp"/-->
+
+        <mkdir dir="${project.distrib.src.dir}"/>
+
+        <jar destfile="${${MODULE_NAME}.distrib.src.jar}">
+            <fileset dir="${${MODULE_NAME}.module.basedir}${file.separator}src">
+                <include name="**${file.separator}*.java"/>
+                <patternset excludes="${${MODULE_NAME}.excludeFromCompile}"/>
+            </fileset>
+            <fileset dir="${${MODULE_NAME}.module.basedir}">
+                <include name="resources${file.separator}**${file.separator}*"/>
+            </fileset>
+        </jar>
+
+        <antcall target="${MODULE_NAME}.distribTarget"/>
+    </target>
+
+    <target name="${MODULE_NAME}.compile" depends="${DEPS_COMPILE}" description="Compile module ${${MODULE_NAME}.module.name}; production classes">
+        <mkdir dir="${${MODULE_NAME}.module.outputdir}"/>
+
+        <javac destdir="${${MODULE_NAME}.module.outputdir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" encoding="${compiler.encoding}"
+               memoryMaximumSize="${compiler.max.memory}" fork="true" srcdir="${${MODULE_NAME}.module.basedir}${file.separator}src" excludes="${${MODULE_NAME}.excludeFromCompile}">
+            <compilerarg line="${compiler.args}"/>
+            <classpath refid="${MODULE_NAME}.classpath"/>
+        </javac>
+
+        <copy todir="${${MODULE_NAME}.module.outputdir}">
+            <fileset dir="${${MODULE_NAME}.module.basedir}">
+                <include name="resources${file.separator}**${file.separator}*"/>
+            </fileset>
+        </copy>
+    </target>
+
+    <available property="${MODULE_NAME}.testsLocated" file="src" type="dir">
+        <filepath>
+            <dirset dir="${${MODULE_NAME}.module.basedir}">
+                <include name="tests${file.separator}*${file.separator}"/>
+            </dirset>
+        </filepath>
+    </available>
+
+    <target name="${MODULE_NAME}.compile.tests" depends="${MODULE_NAME}.compile,${DEPS_COMPILE_TESTS}" description="compile module ${${MODULE_NAME}.module.name}; test classes" if="${MODULE_NAME}.testsLocated">
+        <mkdir dir="${${MODULE_NAME}.module.testoutputdir}"/>
+        <javac destdir="${${MODULE_NAME}.module.testoutputdir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" encoding="${compiler.encoding}"
+               memoryMaximumSize="${compiler.max.memory}" fork="true" excludes="${${MODULE_NAME}.excludeTestsFromCompile}">
+            <compilerarg line="${compiler.args}"/>
+            <classpath refid="${MODULE_NAME}.classpath"/>
+            <classpath refid="${MODULE_NAME}.testclasspath"/>
+            <classpath location="${${MODULE_NAME}.module.outputdir}"/>
+            <src>
+                <path>
+                    <dirset dir="${${MODULE_NAME}.module.basedir}">
+                        <include name="tests${file.separator}*${file.separator}src"/>
+                    </dirset>
+                </path>
+            </src>
+        </javac>
+
+        <path id="${MODULE_NAME}.toCopyResources">
+            <dirset dir="${${MODULE_NAME}.module.basedir}">
+                <include name="tests${file.separator}*${file.separator}resources"/>
+            </dirset>
+        </path>
+
+        <for pathref="${MODULE_NAME}.toCopyResources" param="cur">
+            <sequential>
+                <copy todir="${${MODULE_NAME}.module.testoutputdir}${file.separator}resources">
+                    <fileset dir="@{cur}"/>
+                </copy>
+            </sequential>
+        </for>
+    </target>
+
+    <target name="${MODULE_NAME}.run-tests" description="junit tests" depends="${MODULE_NAME}.compile.tests" if="${MODULE_NAME}.testsLocated" unless="${MODULE_NAME}.disableTests">
+        <delete dir="${${MODULE_NAME}.module.reportsdir}"/>
+        <mkdir dir="${${MODULE_NAME}.module.reportsdir}${file.separator}raw${file.separator}"/>
+        <mkdir dir="${${MODULE_NAME}.module.reportsdir}${file.separator}run${file.separator}"/>
+
+        <for pathref="${MODULE_NAME}.testclasspath" param="cur">
+            <sequential>
+                <junit printsummary="withOutAndErr" dir="${${MODULE_NAME}.module.reportsdir}${file.separator}run${file.separator}">
+		    <syspropertyset refid="${MODULE_NAME}.testProperties"/>
+
+                    <classpath>
+                        <path refid="${MODULE_NAME}.classpath"/>
+                        <path refid="${MODULE_NAME}.testclasspath"/>
+                        <pathelement location="${${MODULE_NAME}.module.outputdir}"/>
+                        <pathelement location="${${MODULE_NAME}.module.testoutputdir}"/>
+                    </classpath>
+        
+                    <batchtest fork="yes" filtertrace="yes" todir="${${MODULE_NAME}.module.reportsdir}${file.separator}raw${file.separator}" if="${MODULE_NAME}.transitiveTests">
+                        <formatter type="xml"/>
+                        <fileset dir="@{cur}" includes="**${file.separator}*TestCase.class"/>
+                    </batchtest>
+                </junit>
+            </sequential>
+        </for>
+
+        <junit printsummary="withOutAndErr" dir="${${MODULE_NAME}.module.reportsdir}${file.separator}run${file.separator}">
+	    <syspropertyset refid="${MODULE_NAME}.testProperties"/>
+
+            <classpath>
+               <path refid="${MODULE_NAME}.classpath"/>
+               <path refid="${MODULE_NAME}.testclasspath"/>
+               <pathelement location="${${MODULE_NAME}.module.outputdir}"/>
+               <pathelement location="${${MODULE_NAME}.module.testoutputdir}"/>
+            </classpath>
+        
+            <batchtest fork="yes" filtertrace="yes" todir="${${MODULE_NAME}.module.reportsdir}${file.separator}raw${file.separator}">
+                <formatter type="xml"/>
+                <fileset dir="${${MODULE_NAME}.module.testoutputdir}" includes="**${file.separator}*TestCase.class"/>
+            </batchtest>
+        </junit>
+    </target>
+
+    <target name ="${MODULE_NAME}.test" depends="${MODULE_NAME}.run-tests" if="${MODULE_NAME}.testsLocated" unless="${MODULE_NAME}.disableTests">
+        <junitreport todir="${${MODULE_NAME}.module.reportsdir}">
+            <fileset dir="${${MODULE_NAME}.module.reportsdir}${file.separator}raw${file.separator}">
+                <include name="TEST-*.xml"/>
+            </fileset>
+            <report format="frames" todir="${${MODULE_NAME}.module.reportsdir}${file.separator}html${file.separator}"/>
+        </junitreport>
+    </target>
+
+    <target name="${MODULE_NAME}.clean" description="cleanup all">
+        <delete dir="${${MODULE_NAME}.module.outputdir}"/>
+        <delete dir="${${MODULE_NAME}.module.testoutputdir}"/>
+        <delete dir="${${MODULE_NAME}.module.reportsdir}"/>
+    </target>
+
+    <target name="clean" depends="${MODULE_NAME}.clean"/>
+    <target name="build" depends="${MODULE_NAME}.build"/>
+    <target name="compile" depends="${MODULE_NAME}.compile"/>
+    <target name="compile.tests" depends="${MODULE_NAME}.compile.tests"/>
+    <target name="test" depends="${MODULE_NAME}.test"/>
+
+    <target name="help">
+        <echo message="==============================================================================="/>
+        <echo message="${${MODULE_NAME}.module.name} module build file help"/>
+        <echo message=""/>
+        <echo message="Please run 'ant target' where target is one of these:"/>
+        <echo message=""/>
+        <echo message="   build             - builds the module"/>
+        <echo message="   clean             - cleans the module, removes all generated files"/>
+        <echo message="   test              - runs tests and generates reports" />
+        <echo message=""/>
+        <echo message="==============================================================================="/>
+    </target>
+</project>

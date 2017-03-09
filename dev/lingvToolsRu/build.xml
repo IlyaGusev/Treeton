@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<!--
+  ~ Copyright Anatoly Starostin (c) 2017.
+  -->
+
+<project name="lingvToolsRu.project" default="help">
+    <import file="buildInfo.xml"/>
+
+    <target name="lingvToolsRu.copylibs">
+        <mkdir dir="${project.libs.dir}"/>
+
+        <copy todir="${project.libs.dir}">
+            <fileset dir="${project.third-party.dir}">
+                <patternset refid="lingvToolsRu.libraries"/>
+            </fileset>
+        </copy>
+    </target>
+
+    <target name="lingvToolsRu.build"
+            depends="lingvToolsRu.compile,lingvToolsRu.copylibs,treetonCore.build,scape.build,lingvTools.build"
+            description="Create distribution kit">
+        <pathconvert property="lingvToolsRu.newclasspath" pathsep=" ">
+            <path refid="lingvToolsRu.build.classpath"/>
+            <map from="${project.distrib.dir}${file.separator}" to=""/>
+        </pathconvert>
+
+        <jar destfile="${lingvToolsRu.distrib.jar}">
+            <fileset dir="${lingvToolsRu.module.outputdir}"/>
+            <manifest>
+                <attribute name="Main-Class" value="${lingvToolsRu.mainclass}"/>
+                <attribute name="Class-Path" value="${lingvToolsRu.newclasspath}"/>
+            </manifest>
+        </jar>
+
+        <mkdir dir="${project.distrib.tests.dir}"/>
+
+        <pathconvert property="lingvToolsRu.newtestclasspath" pathsep=" ">
+            <path refid="lingvToolsRu.build.testclasspath"/>
+            <map from="${project.distrib.tests.dir}${file.separator}" to=""/>
+        </pathconvert>
+
+        <pathconvert property="lingvToolsRu.newclasspath_fortests" pathsep=" ">
+            <path refid="lingvToolsRu.build.classpath"/>
+            <path>
+                <pathelement location="${lingvToolsRu.distrib.jar}"/>
+            </path>
+            <map from="${project.distrib.dir}${file.separator}" to="..${file.separator}"/>
+        </pathconvert>
+
+        <!--mkdir dir="${lingvToolsRu.module.testoutputdir}${file.separator}fake"/>
+
+        <jar destfile="${lingvToolsRu.distrib.tests.jar}">
+            <fileset dir="${lingvToolsRu.module.testoutputdir}"/>
+            <manifest>
+                <attribute name="Main-Class" value=""/>
+                <attribute name="Class-Path" value="${lingvToolsRu.newclasspath_fortests} ${lingvToolsRu.newtestclasspath}"/>
+            </manifest>
+        </jar>
+
+        <mkdir dir="${project.distrib.tests.dir}${file.separator}tmp"/>
+        <copy todir="${project.distrib.tests.dir}${file.separator}tmp">
+         <fileset dir="${lingvToolsRu.module.basedir}">
+           <include name="tests${file.separator}*${file.separator}src${file.separator}*${file.separator}**"/>
+         </fileset>
+         <regexpmapper from=".*src(.*)" to="\1" handledirsep="yes"/>
+        </copy>
+
+        <jar destfile="${lingvToolsRu.distrib.tests.src.jar}">
+             <fileset dir="${project.distrib.tests.dir}${file.separator}tmp">
+                <include name="**${file.separator}*.java"/>
+                <patternset excludes="${lingvToolsRu.excludeTestsFromCompile}"/>
+             </fileset>
+        </jar>
+        <delete dir="${project.distrib.tests.dir}${file.separator}tmp"/-->
+
+        <mkdir dir="${project.distrib.src.dir}"/>
+
+        <jar destfile="${lingvToolsRu.distrib.src.jar}">
+            <fileset dir="${lingvToolsRu.module.basedir}${file.separator}src">
+                <include name="**${file.separator}*.java"/>
+                <patternset excludes="${lingvToolsRu.excludeFromCompile}"/>
+            </fileset>
+            <fileset dir="${lingvToolsRu.module.basedir}">
+                <include name="resources${file.separator}**${file.separator}*"/>
+            </fileset>
+        </jar>
+
+        <antcall target="lingvToolsRu.distribTarget"/>
+    </target>
+
+    <target name="lingvToolsRu.compile"
+            depends="treetonCore.compile,scape.compile,lingvTools.compile,lingvToolsRu.setSourceDir"
+            description="Compile module ${lingvToolsRu.module.name}; production classes">
+        <mkdir dir="${lingvToolsRu.module.outputdir}"/>
+
+        <javac destdir="${lingvToolsRu.module.outputdir}" debug="${compiler.debug}"
+               nowarn="${compiler.generate.no.warnings}" encoding="${compiler.encoding}"
+               memoryMaximumSize="${compiler.max.memory}" fork="true"
+               srcdir="${lingvToolsRu.module.basedir}${file.separator}src"
+               excludes="${lingvToolsRu.excludeFromCompile}">
+            <compilerarg line="${compiler.args}"/>
+            <classpath refid="lingvToolsRu.classpath"/>
+        </javac>
+
+        <copy todir="${lingvToolsRu.module.outputdir}">
+            <fileset dir="${lingvToolsRu.module.basedir}">
+                <include name="resources${file.separator}**${file.separator}*"/>
+            </fileset>
+        </copy>
+
+        <for list="${lingvToolsRu.sourcedirs}" param="cur">
+            <sequential>
+                <copy todir="${lingvToolsRu.module.outputdir}">
+                    <fileset dir="${lingvToolsRu.module.basedir}${file.separator}@{cur}">
+                        <include name="**${file.separator}*"/>
+                        <exclude name="**${file.separator}*.java"/>
+                    </fileset>
+                </copy>
+            </sequential>
+        </for>
+    </target>
+
+    <available property="lingvToolsRu.testsLocated" file="src" type="dir">
+        <filepath>
+            <dirset dir="${lingvToolsRu.module.basedir}">
+                <include name="tests${file.separator}*${file.separator}"/>
+            </dirset>
+        </filepath>
+    </available>
+
+    <target name="lingvToolsRu.compile.tests"
+            depends="lingvToolsRu.compile,treetonCore.compile.tests,scape.compile.tests,lingvTools.compile.tests"
+            description="compile module ${lingvToolsRu.module.name}; test classes" if="lingvToolsRu.testsLocated">
+        <mkdir dir="${lingvToolsRu.module.testoutputdir}"/>
+        <javac destdir="${lingvToolsRu.module.testoutputdir}" debug="${compiler.debug}"
+               nowarn="${compiler.generate.no.warnings}" encoding="${compiler.encoding}"
+               memoryMaximumSize="${compiler.max.memory}" fork="true"
+               excludes="${lingvToolsRu.excludeTestsFromCompile}">
+            <compilerarg line="${compiler.args}"/>
+            <classpath refid="lingvToolsRu.classpath"/>
+            <classpath refid="lingvToolsRu.testclasspath"/>
+            <classpath location="${lingvToolsRu.module.outputdir}"/>
+            <src>
+                <path>
+                    <dirset dir="${lingvToolsRu.module.basedir}">
+                        <include name="tests${file.separator}*${file.separator}src"/>
+                    </dirset>
+                </path>
+            </src>
+        </javac>
+
+        <path id="lingvToolsRu.toCopyResources">
+            <dirset dir="${lingvToolsRu.module.basedir}">
+                <include name="tests${file.separator}*${file.separator}resources"/>
+            </dirset>
+        </path>
+
+        <for pathref="lingvToolsRu.toCopyResources" param="cur">
+            <sequential>
+                <copy todir="${lingvToolsRu.module.testoutputdir}${file.separator}resources">
+                    <fileset dir="@{cur}"/>
+                </copy>
+            </sequential>
+        </for>
+    </target>
+
+    <target name="lingvToolsRu.run-tests" description="junit tests" depends="lingvToolsRu.compile.tests"
+            if="lingvToolsRu.testsLocated" unless="lingvToolsRu.disableTests">
+        <delete dir="${lingvToolsRu.module.reportsdir}"/>
+        <mkdir dir="${lingvToolsRu.module.reportsdir}${file.separator}raw${file.separator}"/>
+        <mkdir dir="${lingvToolsRu.module.reportsdir}${file.separator}run${file.separator}"/>
+
+        <for pathref="lingvToolsRu.testclasspath" param="cur">
+            <sequential>
+                <junit printsummary="withOutAndErr"
+                       dir="${lingvToolsRu.module.reportsdir}${file.separator}run${file.separator}">
+                    <syspropertyset refid="lingvToolsRu.testProperties"/>
+
+                    <classpath>
+                        <path refid="lingvToolsRu.classpath"/>
+                        <path refid="lingvToolsRu.testclasspath"/>
+                        <pathelement location="${lingvToolsRu.module.outputdir}"/>
+                        <pathelement location="${lingvToolsRu.module.testoutputdir}"/>
+                    </classpath>
+
+                    <batchtest fork="yes" filtertrace="yes"
+                               todir="${lingvToolsRu.module.reportsdir}${file.separator}raw${file.separator}"
+                               if="lingvToolsRu.transitiveTests">
+                        <formatter type="xml"/>
+                        <fileset dir="@{cur}" includes="**${file.separator}*TestCase.class"/>
+                    </batchtest>
+                </junit>
+            </sequential>
+        </for>
+
+        <junit printsummary="withOutAndErr"
+               dir="${lingvToolsRu.module.reportsdir}${file.separator}run${file.separator}">
+            <syspropertyset refid="lingvToolsRu.testProperties"/>
+
+            <classpath>
+                <path refid="lingvToolsRu.classpath"/>
+                <path refid="lingvToolsRu.testclasspath"/>
+                <pathelement location="${lingvToolsRu.module.outputdir}"/>
+                <pathelement location="${lingvToolsRu.module.testoutputdir}"/>
+            </classpath>
+
+            <batchtest fork="yes" filtertrace="yes"
+                       todir="${lingvToolsRu.module.reportsdir}${file.separator}raw${file.separator}">
+                <formatter type="xml"/>
+                <fileset dir="${lingvToolsRu.module.testoutputdir}" includes="**${file.separator}*TestCase.class"/>
+            </batchtest>
+        </junit>
+    </target>
+
+    <target name="lingvToolsRu.test" depends="lingvToolsRu.run-tests" if="lingvToolsRu.testsLocated"
+            unless="lingvToolsRu.disableTests">
+        <junitreport todir="${lingvToolsRu.module.reportsdir}">
+            <fileset dir="${lingvToolsRu.module.reportsdir}${file.separator}raw${file.separator}">
+                <include name="TEST-*.xml"/>
+            </fileset>
+            <report format="frames" todir="${lingvToolsRu.module.reportsdir}${file.separator}html${file.separator}"/>
+        </junitreport>
+    </target>
+
+    <target name="lingvToolsRu.clean" description="cleanup all">
+        <delete dir="${lingvToolsRu.module.outputdir}"/>
+        <delete dir="${lingvToolsRu.module.testoutputdir}"/>
+        <delete dir="${lingvToolsRu.module.reportsdir}"/>
+    </target>
+
+    <target name="clean" depends="lingvToolsRu.clean"/>
+    <target name="build" depends="lingvToolsRu.build"/>
+    <target name="compile" depends="lingvToolsRu.compile"/>
+    <target name="compile.tests" depends="lingvToolsRu.compile.tests"/>
+    <target name="test" depends="lingvToolsRu.test"/>
+
+    <target name="help">
+        <echo message="==============================================================================="/>
+        <echo message="${lingvToolsRu.module.name} module build file help"/>
+        <echo message=""/>
+        <echo message="Please run 'ant target' where target is one of these:"/>
+        <echo message=""/>
+        <echo message="   build             - builds the module"/>
+        <echo message="   clean             - cleans the module, removes all generated files"/>
+        <echo message="   test              - runs tests and generates reports"/>
+        <echo message=""/>
+        <echo message="==============================================================================="/>
+    </target>
+</project>

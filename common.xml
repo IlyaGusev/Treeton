@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<project name="Treeton.common" default="config">
+
+  <dirname property="project.basedir" file="${ant.file}"/>
+
+  <property name="external.ontosminer.distrib.dir" value="${external.ontosminer.dir}${file.separator}jar"/>
+  <property name="external.ontosminer.distrib.src.dir" value="${external.ontosminer.dir}${file.separator}jar${file.separator}src"/>
+
+  <property name="compiler.debug" value="on"/>
+  <property name="compiler.generate.no.warnings" value="off"/>
+  <property name="compiler.args" value="-source 1.8 -target 1.8"/>
+  <property name="compiler.encoding" value="UTF-8"/>
+  <property name="compiler.max.memory" value="128m"/>
+
+  <property name="project.outputdir" value="${project.basedir}${file.separator}classes${file.separator}production"/>
+  <property name="project.reportsdir" value="${project.basedir}${file.separator}reports"/>
+  <property name="project.testoutputdir" value="${project.basedir}${file.separator}classes${file.separator}test"/>
+  <property name="project.distrib.dir" value="${project.basedir}${file.separator}distrib"/>
+  <property name="project.distrib.web.dir" value="${project.basedir}${file.separator}distrib${file.separator}web"/>
+  <property name="project.distrib.conf.dir" value="${project.distrib.dir}${file.separator}conf"/>
+  <property name="project.distrib.domains.dir" value="${project.distrib.dir}${file.separator}domains"/>
+  <property name="project.distrib.tests.dir" value="${project.distrib.dir}${file.separator}tests"/>
+  <property name="project.distrib.src.dir" value="${project.distrib.dir}${file.separator}src"/>
+  <property name="project.runtime.dir" value="${project.basedir}${file.separator}runtime"/>
+  <property name="project.runtime.conf.dir" value="${project.runtime.dir}${file.separator}conf"/>
+  <property name="project.runtime.domains.dir" value="${project.runtime.dir}${file.separator}domains"/>
+
+  <property name="project.libs.dir" value="${project.distrib.dir}${file.separator}lib"/>
+  <property name="project.third-party.dir" value="${project.basedir}${file.separator}third-party"/>
+  <property name="project.third-party.ontosofa.dir" value="${project.third-party.dir}${file.separator}OntosOFA"/>
+  <property name="project.third-party.ontosofa.src.dir" value="${project.third-party.ontosofa.dir}${file.separator}src"/>
+  <property name="project.antExtension.jar" value="${project.third-party.dir}${file.separator}antExtension${file.separator}treetonAntExtension.jar"/>
+
+  <typedef name="for" classname="treeton.ant.tools.ForTask" classpath="${project.antExtension.jar}"/>
+  <typedef name="collect" classname="treeton.ant.tools.PathCollector"  classpath="${project.antExtension.jar}"/>
+  <typedef name="javaheaderfilter" classname="treeton.ant.tools.JavaHeaderFilter"  classpath="${project.antExtension.jar}"/>
+  <typedef name="stringreplace" classname="treeton.ant.tools.StringReplace"  classpath="${project.antExtension.jar}"/>
+
+  <property name="modules.list" value="lingvToolsRu,scape,lingvTools,treetonGui,treetonCore,treetonRus,"/>
+
+  <for list="${modules.list}" param="cur">
+    <sequential>
+      <property name="@{cur}.module.name" value="@{cur}"/>
+      <property name="@{cur}.module.basedir" value="${project.basedir}${file.separator}dev${file.separator}@{cur}"/>
+      <property name="@{cur}.module.outputdir" value="${project.outputdir}${file.separator}@{cur}"/>
+      <property name="@{cur}.module.reportsdir" value="${project.reportsdir}${file.separator}@{cur}"/>
+      <property name="@{cur}.module.testoutputdir" value="${project.testoutputdir}${file.separator}@{cur}"/>
+      <property name="@{cur}.distrib.jar" value="${project.distrib.dir}${file.separator}@{cur}.jar"/>
+      <property name="@{cur}.distrib.war" value="${project.distrib.web.dir}${file.separator}@{cur}.war"/>
+      <property name="@{cur}.distrib.src.jar" value="${project.distrib.src.dir}${file.separator}@{cur}.src.jar"/>
+      <property name="@{cur}.distrib.tests.jar" value="${project.distrib.tests.dir}${file.separator}@{cur}.tests.jar"/>
+      <property name="@{cur}.distrib.tests.src.jar" value="${project.distrib.src.dir}${file.separator}@{cur}.tests.src.jar"/>
+    </sequential>
+  </for>
+
+  <patternset id="gate.library">
+    <include name="gate${file.separator}*.jar"/>
+    <include name="gate${file.separator}*.zip"/>
+  </patternset>
+
+  <patternset id="glf.library">
+    <include name="glf${file.separator}*.jar"/>
+    <include name="glf${file.separator}*.zip"/>
+  </patternset>
+
+  <patternset  id="javatools.library">
+    <include name="javatools${file.separator}*.jar"/>
+    <include name="javatools${file.separator}*.zip"/>
+  </patternset>
+
+  <patternset id="looks.library">
+    <include name="looks${file.separator}*.jar"/>
+    <include name="looks${file.separator}*.zip"/>
+  </patternset>
+
+  <patternset id="morph.library">
+    <include name="morph${file.separator}*.jar"/>
+    <include name="morph${file.separator}*.zip"/>
+  </patternset>
+
+  <patternset id="collector.library">
+    <include name="collector${file.separator}*.jar"/>
+    <include name="collector${file.separator}*.zip"/>
+  </patternset>
+
+  <patternset id="regexpwalker.library">
+    <include name="regexpwalker${file.separator}*.jar"/>
+    <include name="regexpwalker${file.separator}*.zip"/>
+  </patternset>
+
+  <patternset id="xerces.library">
+    <include name="xerces${file.separator}*.jar"/>
+    <include name="xerces${file.separator}*.zip"/>
+  </patternset>
+
+  <patternset id="OntosOFA.library">
+    <include name="OntosOFA${file.separator}*.jar"/>
+    <include name="OntosOFA${file.separator}*.zip"/>
+  </patternset>
+
+    <patternset id="_OntosOFA.library">
+      <include name="_OntosOFA${file.separator}*.jar"/>
+      <include name="_OntosOFA${file.separator}*.zip"/>
+    </patternset>
+
+    <patternset id="jakarta-commons.library">
+      <include name="jakarta-commons${file.separator}*.jar"/>
+      <include name="jakarta-commons${file.separator}*.zip"/>
+    </patternset>
+
+    <patternset id="tomcatlib.library">
+      <include name="tomcatlib${file.separator}*.jar"/>
+      <include name="tomcatlib${file.separator}*.zip"/>
+    </patternset>
+
+    <patternset id="jwpl.library">
+      <include name="jwpl${file.separator}*.jar"/>
+      <include name="jwpl${file.separator}*.zip"/>
+    </patternset>
+
+    <patternset id="rsyntaxtextarea.library">
+      <include name="rsyntaxtextarea${file.separator}*.jar"/>
+      <include name="rsyntaxtextarea${file.separator}*.zip"/>
+    </patternset>
+
+  <patternset id="OntosUtil.library">
+    <include name="OntosUtil${file.separator}*.zip"/>
+    <include name="OntosUtil${file.separator}*.jar"/>
+  </patternset>
+
+  <patternset id="Jape4.library">
+    <include name="Jape4${file.separator}*.jar"/>
+  </patternset>
+
+  <patternset id="jflex.library">
+    <include name="jflex-1.4.2${file.separator}*.jar"/>
+  </patternset>
+
+  <patternset id="java_cup.library">
+    <include name="java_cup_v10k${file.separator}*.jar"/>
+  </patternset>
+
+  <patternset id="gnuGetOpt.library">
+    <include name="getopt${file.separator}GnuGetOpt.jar"/>
+  </patternset>
+
+  <patternset id="javamail.library">
+    <include name="javamail-1.3.1${file.separator}*.jar"/>
+  </patternset>
+
+  <patternset id="common.domain">
+    <include name="Common${file.separator}**${file.separator}*"/>
+  </patternset>
+
+  <patternset id="russian.domain">
+    <include name="Russian${file.separator}**${file.separator}*"/>
+  </patternset>
+
+  <patternset id="runtime.context">
+    <include name="context.xml"/>
+    <include name="schema${file.separator}**"/>
+  </patternset>
+
+  <patternset id="junit.library">
+    <include name="junit${file.separator}dist${file.separator}*.jar"/>
+    <include name="junit${file.separator}dist${file.separator}*.zip"/>
+  </patternset>
+
+  <patternset id="log4j.library">
+    <include name="log4j${file.separator}dist${file.separator}*.jar"/>
+    <include name="log4j${file.separator}dist${file.separator}*.zip"/>
+  </patternset>
+
+  <patternset id="jgoodies-forms.library">
+    <include name="jgoodies-forms${file.separator}*.jar"/>
+  </patternset>
+
+  <patternset id="swingx.library">
+    <include name="swingx${file.separator}*.jar"/>
+  </patternset>
+
+    <patternset id="jfreechart.library">
+      <include name="jfreechart${file.separator}*.jar"/>
+    </patternset>
+  <target name="config"/>
+
+
+  <patternset id="jwpl.library">
+    <include name="jwpl${file.separator}*.jar"/>
+  </patternset>
+    <patternset id="lingpipe.library">
+      <include name="lingpipe${file.separator}*.jar"/>
+    </patternset>
+    <patternset id="sspace.library">
+      <include name="sspace${file.separator}*.jar"/>
+    </patternset>
+    <patternset id="lucene.library">
+      <include name="lucene${file.separator}*.jar"/>
+    </patternset>
+</project>

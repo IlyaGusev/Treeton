@@ -1,0 +1,6 @@
+                <CLASS>treeton.res.ru.NumbersProcessor</CLASS>
+                <CLASS>treeton.res.InvarsConverter</CLASS>
+                <CLASS>treeton.res.ru.unknown.RuUnknownMorphFsmApplierResource</CLASS>
+                <CLASS>treeton.res.ru.StarlingMorphApplier</CLASS>
+                <CLASS>treeton.res.ru.StarlingOnlyAccentMorphApplier</CLASS>
+

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright Anatoly Starostin (c) 2017.
+  -->
+
+<Document xmlns="http://starling.rinet.ru/treeton/config">
+    <DOMAIN NAME="Common" DIR="./Common/" SHORTNAME="">
+        <TYPESDCL>./types.dcl</TYPESDCL>
+        <RELSXML>./relations.xml</RELSXML>
+
+        <RESOURCETYPE NAME="Cleanup">
+            <CLASS>treeton.res.CleanUp</CLASS>
+        </RESOURCETYPE>
+
+        <RESOURCETYPE NAME="Tokeniser">
+            <CLASS>treeton.res.tokeniser.SimpleTokeniser</CLASS>
+            <PARAMDESCRIPTION NAME="rulesPath" TYPE="String"/>
+            <PARAMDESCRIPTION NAME="atomicType" TYPE="String"/>
+            <PARAMDESCRIPTION NAME="defaultTokenType" TYPE="String"/>
+            <PARAMDESCRIPTION NAME="kindFeature" TYPE="String"/>
+            <PARAMDESCRIPTION NAME="langFeature" TYPE="String"/>
+        </RESOURCETYPE>
+
+        <RESOURCETYPE NAME="Minimizator">
+            <CLASS>treeton.res.minimz.Minimizator</CLASS>
+            <PARAMDESCRIPTION NAME="rulesPath" TYPE="String"/>
+        </RESOURCETYPE>
+
+        <RESOURCETYPE NAME="ScapeTransducer">
+            <CLASS>treeton.res.ScapeTransducer</CLASS>
+            <PARAMDESCRIPTION NAME="rulesPath" TYPE="String"/>
+            <PARAMDESCRIPTION NAME="mainProgram" TYPE="String"/>
+        </RESOURCETYPE>
+
+        <RESOURCE NAME="Common_Cleanup" TYPE="Cleanup"/>
+    </DOMAIN>
+</Document>

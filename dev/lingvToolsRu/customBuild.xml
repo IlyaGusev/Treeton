@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<!--
+  ~ Copyright Anatoly Starostin (c) 2017.
+  -->
+
+<project name="lingvToolsRu.custom.info" default="nothing">
+    <dirname property="project.basedir" file="${ant.file}${file.separator}..${file.separator}.."/>
+    <import file="../../common.xml"/>
+
+    <patternset id="lingvToolsRu.libraries">
+        <patternset refid="morph.library"/>
+        <patternset refid="regexpwalker.library"/>
+        <!--
+          Example:
+
+          <patternset refid="lib1.library"/>
+          <patternset refid="lib2.library"/>
+        -->
+    </patternset>
+
+    <!-- list of dependencies
+      Example:
+
+      <property name="lingvToolsRu.deps" value="module1,module2"/>
+    -->
+
+    <property name="lingvToolsRu.deps" value="treetonCore,scape,lingvTools"/>
+
+    <!-- Main class definition
+      Example:
+
+      <property name="lingvToolsRu.mainclass" value="com.Starter"/>
+    -->
+
+    <property name="lingvToolsRu.mainclass" value=""/>
+
+    <!-- Here you can specify files you want to exclude from the compilation. It is possible to use wildcard patterns.
+      Example:
+
+      <property name="lingvToolsRu.excludeFromCompile" value="com/myClass.java, com/myPackage/**"/>
+    -->
+
+    <property name="lingvToolsRu.excludeFromCompile" value=""/>
+
+    <!-- Here you can specify files you want to exclude from the compilation of test sources. It is possible to use wildcard patterns.
+      Example:
+
+      <property name="lingvToolsRu.excludeFromCompile" value="com/myTestCase.java, com/myTestPackage/**"/>
+    -->
+
+    <property name="lingvToolsRu.excludeTestsFromCompile" value=""/>
+
+    <!-- distribTarget executes before build target. It can be used for
+    copying some necessary files to the distribution kit.
+
+    Example:
+    <target name="lingvToolsRu.distribTarget"/>
+      <mkdir dir="${project.distrib.conf.dir}"/>
+
+      <copy todir="${project.distrib.conf.dir}">
+        <fileset dir="${project.runtime.conf.dir}">
+          <include name="config.xml"/>
+        </fileset>
+      </copy>
+    </target>
+    -->
+
+    <target name="jnistubs">
+        <mkdir dir="${lingvToolsRu.module.basedir}${file.separator}native_stubs"/>
+
+        <javah destdir="${lingvToolsRu.module.basedir}${file.separator}native_stubs" verbose="yes" force="yes">
+            <classpath refid="lingvToolsRu.testclasspath"/>
+            <classpath location="${lingvToolsRu.module.outputdir}"/>
+            <class name="treeton.morph._native.NativeRusMorphEngine"/>
+        </javah>
+    </target>
+
+    <target name="lingvToolsRu.distribTarget"/>
+    <target name="nothing"/>
+</project>
