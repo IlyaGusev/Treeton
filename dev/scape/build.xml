@@ -1,8 +1,4 @@
 <?xml version="1.0" encoding="windows-1251"?>
-<!--
-  ~ Copyright Anatoly Starostin (c) 2017.
-  -->
-
 <project name="scape.project" default="help">
     <import file="buildInfo.xml"/>
 
@@ -16,8 +12,7 @@
         </copy>
     </target>
 
-    <target name="scape.build" depends="scape.compile,scape.copylibs,treetonCore.build"
-            description="Create distribution kit">
+    <target name="scape.build" depends="scape.compile,scape.copylibs,treetonCore.build" description="Create distribution kit">
         <pathconvert property="scape.newclasspath" pathsep=" ">
             <path refid="scape.build.classpath"/>
             <map from="${project.distrib.dir}${file.separator}" to=""/>
@@ -41,7 +36,7 @@
         <pathconvert property="scape.newclasspath_fortests" pathsep=" ">
             <path refid="scape.build.classpath"/>
             <path>
-                <pathelement location="${scape.distrib.jar}"/>
+               <pathelement location="${scape.distrib.jar}"/>
             </path>
             <map from="${project.distrib.dir}${file.separator}" to="..${file.separator}"/>
         </pathconvert>
@@ -87,14 +82,11 @@
         <antcall target="scape.distribTarget"/>
     </target>
 
-    <target name="scape.compile" depends="treetonCore.compile,scape.setSourceDir"
-            description="Compile module ${scape.module.name}; production classes">
+    <target name="scape.compile" depends="treetonCore.compile,scape.setSourceDir" description="Compile module ${scape.module.name}; production classes">
         <mkdir dir="${scape.module.outputdir}"/>
 
-        <javac destdir="${scape.module.outputdir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}"
-               encoding="${compiler.encoding}"
-               memoryMaximumSize="${compiler.max.memory}" fork="true"
-               srcdir="${scape.module.basedir}${file.separator}src" excludes="${scape.excludeFromCompile}">
+        <javac destdir="${scape.module.outputdir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" encoding="${compiler.encoding}"
+               memoryMaximumSize="${compiler.max.memory}" fork="true" srcdir="${scape.module.basedir}${file.separator}src" excludes="${scape.excludeFromCompile}">
             <compilerarg line="${compiler.args}"/>
             <classpath refid="scape.classpath"/>
         </javac>
@@ -105,15 +97,15 @@
             </fileset>
         </copy>
 
-        <for list="${scape.sourcedirs}" param="cur">
-            <sequential>
-                <copy todir="${scape.module.outputdir}">
-                    <fileset dir="${scape.module.basedir}${file.separator}@{cur}">
-                        <include name="**${file.separator}*"/>
-                        <exclude name="**${file.separator}*.java"/>
-                    </fileset>
-                </copy>
-            </sequential>
+       <for list="${scape.sourcedirs}" param="cur">
+          <sequential>
+            <copy todir="${scape.module.outputdir}">
+              <fileset dir="${scape.module.basedir}${file.separator}@{cur}">
+                  <include name="**${file.separator}*"/>
+                  <exclude name="**${file.separator}*.java"/>
+              </fileset>
+            </copy>
+          </sequential>
         </for>
     </target>
 
@@ -125,11 +117,9 @@
         </filepath>
     </available>
 
-    <target name="scape.compile.tests" depends="scape.compile,treetonCore.compile.tests"
-            description="compile module ${scape.module.name}; test classes" if="scape.testsLocated">
+    <target name="scape.compile.tests" depends="scape.compile,treetonCore.compile.tests" description="compile module ${scape.module.name}; test classes" if="scape.testsLocated">
         <mkdir dir="${scape.module.testoutputdir}"/>
-        <javac destdir="${scape.module.testoutputdir}" debug="${compiler.debug}"
-               nowarn="${compiler.generate.no.warnings}" encoding="${compiler.encoding}"
+        <javac destdir="${scape.module.testoutputdir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" encoding="${compiler.encoding}"
                memoryMaximumSize="${compiler.max.memory}" fork="true" excludes="${scape.excludeTestsFromCompile}">
             <compilerarg line="${compiler.args}"/>
             <classpath refid="scape.classpath"/>
@@ -159,17 +149,15 @@
         </for>
     </target>
 
-    <target name="scape.run-tests" description="junit tests" depends="scape.compile.tests" if="scape.testsLocated"
-            unless="scape.disableTests">
+    <target name="scape.run-tests" description="junit tests" depends="scape.compile.tests" if="scape.testsLocated" unless="scape.disableTests">
         <delete dir="${scape.module.reportsdir}"/>
         <mkdir dir="${scape.module.reportsdir}${file.separator}raw${file.separator}"/>
         <mkdir dir="${scape.module.reportsdir}${file.separator}run${file.separator}"/>
 
         <for pathref="scape.testclasspath" param="cur">
             <sequential>
-                <junit printsummary="withOutAndErr"
-                       dir="${scape.module.reportsdir}${file.separator}run${file.separator}">
-                    <syspropertyset refid="scape.testProperties"/>
+                <junit printsummary="withOutAndErr" dir="${scape.module.reportsdir}${file.separator}run${file.separator}">
+		    <syspropertyset refid="scape.testProperties"/>
 
                     <classpath>
                         <path refid="scape.classpath"/>
@@ -177,10 +165,8 @@
                         <pathelement location="${scape.module.outputdir}"/>
                         <pathelement location="${scape.module.testoutputdir}"/>
                     </classpath>
-
-                    <batchtest fork="yes" filtertrace="yes"
-                               todir="${scape.module.reportsdir}${file.separator}raw${file.separator}"
-                               if="scape.transitiveTests">
+        
+                    <batchtest fork="yes" filtertrace="yes" todir="${scape.module.reportsdir}${file.separator}raw${file.separator}" if="scape.transitiveTests">
                         <formatter type="xml"/>
                         <fileset dir="@{cur}" includes="**${file.separator}*TestCase.class"/>
                     </batchtest>
@@ -189,24 +175,23 @@
         </for>
 
         <junit printsummary="withOutAndErr" dir="${scape.module.reportsdir}${file.separator}run${file.separator}">
-            <syspropertyset refid="scape.testProperties"/>
+	    <syspropertyset refid="scape.testProperties"/>
 
             <classpath>
-                <path refid="scape.classpath"/>
-                <path refid="scape.testclasspath"/>
-                <pathelement location="${scape.module.outputdir}"/>
-                <pathelement location="${scape.module.testoutputdir}"/>
+               <path refid="scape.classpath"/>
+               <path refid="scape.testclasspath"/>
+               <pathelement location="${scape.module.outputdir}"/>
+               <pathelement location="${scape.module.testoutputdir}"/>
             </classpath>
-
-            <batchtest fork="yes" filtertrace="yes"
-                       todir="${scape.module.reportsdir}${file.separator}raw${file.separator}">
+        
+            <batchtest fork="yes" filtertrace="yes" todir="${scape.module.reportsdir}${file.separator}raw${file.separator}">
                 <formatter type="xml"/>
                 <fileset dir="${scape.module.testoutputdir}" includes="**${file.separator}*TestCase.class"/>
             </batchtest>
         </junit>
     </target>
 
-    <target name="scape.test" depends="scape.run-tests" if="scape.testsLocated" unless="scape.disableTests">
+    <target name ="scape.test" depends="scape.run-tests" if="scape.testsLocated" unless="scape.disableTests">
         <junitreport todir="${scape.module.reportsdir}">
             <fileset dir="${scape.module.reportsdir}${file.separator}raw${file.separator}">
                 <include name="TEST-*.xml"/>
@@ -235,7 +220,7 @@
         <echo message=""/>
         <echo message="   build             - builds the module"/>
         <echo message="   clean             - cleans the module, removes all generated files"/>
-        <echo message="   test              - runs tests and generates reports"/>
+        <echo message="   test              - runs tests and generates reports" />
         <echo message=""/>
         <echo message="==============================================================================="/>
     </target>

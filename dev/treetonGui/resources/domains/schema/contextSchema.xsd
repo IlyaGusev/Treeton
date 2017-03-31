@@ -3,8 +3,8 @@
   ~ Copyright Anatoly Starostin (c) 2017.
   -->
 
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns="http://starling.rinet.ru/treeton/config"
-           targetNamespace="http://starling.rinet.ru/treeton/config" elementFormDefault="qualified">
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns="https://github.com/TreetonOrg/Treeton"
+           targetNamespace="https://github.com/TreetonOrg/Treeton" elementFormDefault="qualified">
     <xs:element name="Document">
         <xs:complexType>
             <xs:sequence>

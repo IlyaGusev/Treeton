@@ -18,7 +18,5 @@
         <SOURCES />
       </library>
     </orderEntry>
-    <orderEntry type="library" name="JFlex1" level="project" />
-    <orderEntry type="library" name="java_cup" level="project" />
   </component>
 </module>

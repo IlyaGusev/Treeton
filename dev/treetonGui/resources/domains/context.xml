@@ -3,7 +3,7 @@
   ~ Copyright Anatoly Starostin (c) 2017.
   -->
 
-<Document xmlns="http://starling.rinet.ru/treeton/config">
+<Document xmlns="https://github.com/TreetonOrg/Treeton">
     <DOMAIN NAME="Common" DIR="./Common/" SHORTNAME="">
         <TYPESDCL>./types.dcl</TYPESDCL>
         <RELSXML>./relations.xml</RELSXML>

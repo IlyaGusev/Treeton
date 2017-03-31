@@ -17,7 +17,6 @@
         <SOURCES />
       </library>
     </orderEntry>
-    <orderEntry type="module" module-name="scape" exported="" />
     <orderEntry type="module-library" exported="">
       <library name="swingx">
         <CLASSES>
@@ -40,5 +39,6 @@
         <SOURCES />
       </library>
     </orderEntry>
+    <orderEntry type="module" module-name="treetonRus" exported="" />
   </component>
 </module>

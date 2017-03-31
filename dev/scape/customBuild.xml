@@ -8,7 +8,6 @@
     <import file="../../common.xml"/>
 
     <patternset id="scape.libraries">
-        <patternset refid="gate.library"/>
     </patternset>
 
     <property name="scape.deps" value="treetonCore"/>

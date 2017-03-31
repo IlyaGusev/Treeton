@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Document xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://starling.rinet.ru/treeton/config" xsi:schemaLocation="http://starling.rinet.ru/treeton/config http://starling.rinet.ru/treeton/config/contextSchema.xsd">
+<Document xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="https://github.com/TreetonOrg/Treeton" xsi:schemaLocation="https://github.com/TreetonOrg/Treeton https://github.com/TreetonOrg/Treeton/contextSchema.xsd">
     <DOMAIN NAME="Common" DIR="./Common/" SHORTNAME="">
         <TYPESDCL>./types.dcl</TYPESDCL>
         <RELSXML>./relations.xml</RELSXML>
@@ -28,6 +28,23 @@
             <PARAMDESCRIPTION NAME="rulesPath" TYPE="String"/>
             <PARAMDESCRIPTION NAME="mainProgram" TYPE="String"/>
         </RESOURCETYPE>
+
+        <RESOURCETYPE NAME="VNPExtractor">
+            <CLASS>treeton.res.ru.extraction.VNPExtraction</CLASS>
+        </RESOURCETYPE>
+
+        <RESOURCETYPE NAME="VNPExtractor2">
+            <CLASS>treeton.res.ru.extraction.NewExtraction</CLASS>
+        </RESOURCETYPE>
+
+        <RESOURCETYPE NAME="TrainingData">
+            <CLASS>treeton.res.ru.extraction.TrainingData</CLASS>
+        </RESOURCETYPE>
+
+        <RESOURCETYPE NAME="PrepAttachment">
+            <CLASS>treeton.res.ru.extraction.PrepAttachment</CLASS>
+        </RESOURCETYPE>
+
 
         <RESOURCE NAME="Common_Cleanup" TYPE="Cleanup"/>
 
@@ -65,6 +82,30 @@
             <RESOURCETYPE NAME="InvarsConverter">
                 <CLASS>treeton.res.InvarsConverter</CLASS>
                 <PARAMDESCRIPTION NAME="inputType" TYPE="String"/>
+            </RESOURCETYPE>
+
+            <RESOURCETYPE NAME="GovModelMultiplier">
+                <CLASS>treeton.res.government.GovModelMultiplier</CLASS>
+                <PARAMDESCRIPTION NAME="inputType" TYPE="String"/>
+                <PARAMDESCRIPTION NAME="GovDictionary" TYPE="String"/>
+                <PARAMDESCRIPTION NAME="semFeatureName" TYPE="String"/>
+                <PARAMDESCRIPTION NAME="govIDFeatureName" TYPE="String"/>
+                <PARAMDESCRIPTION NAME="govFeatureName" TYPE="String"/>
+            </RESOURCETYPE>
+
+            <RESOURCETYPE NAME="UnknownMorphFsmApplier">
+                <CLASS>treeton.res.ru.unknown.RuUnknownMorphFsmApplierResource</CLASS>
+                <PARAMDESCRIPTION NAME="uncoveredAreasOnly" TYPE="Boolean" OPTIONAL="true"/>
+                <PARAMDESCRIPTION NAME="path" TYPE="String"/>
+                <PARAMDESCRIPTION NAME="Tokeniser_resourceType" TYPE="String"/>
+                <PARAMDESCRIPTION NAME="predMorphPhaseTemplate" TYPE="String"/>
+            </RESOURCETYPE>
+
+            <RESOURCETYPE NAME="RusMorphDictsApplier">
+                <CLASS>treeton.res.ru.RusMorphApplierResource</CLASS>
+                <PARAMDESCRIPTION NAME="uncoveredAreasOnly" TYPE="Boolean" OPTIONAL="true"/>
+                <PARAMDESCRIPTION NAME="path" TYPE="String"/>
+                <PARAMDESCRIPTION NAME="Tokeniser_resourceType" TYPE="String"/>
             </RESOURCETYPE>
 
             <RESOURCETYPE NAME="RusFreqDictApplier">
@@ -188,6 +229,37 @@
                 </PARAM>
             </RESOURCE>
 
+            <RESOURCE NAME="Russian_MorphGovModelMultiplier" TYPE="GovModelMultiplier">
+                <COMMENT>Russian Morph Gov Mapper</COMMENT>
+                <PARAM NAME="inputType">
+                    <VALUE>Gramm</VALUE>
+                </PARAM>
+                <PARAM NAME="GovDictionary">
+                    <VALUE>treeton.dictanalyzer.govdictloader.govonto.GovDictionaryOntoImpl</VALUE>
+                </PARAM>
+                <PARAM NAME="semFeatureName">
+                    <VALUE>SEM</VALUE>
+                </PARAM>
+                <PARAM NAME="govFeatureName">
+                    <VALUE>GOV</VALUE>
+                </PARAM>
+                <PARAM NAME="govIDFeatureName">
+                    <VALUE>GOVID</VALUE>
+                </PARAM>
+            </RESOURCE>
+
+            <RESOURCE NAME="Russian_UnknownMorphFsmApplier" TYPE="UnknownMorphFsmApplier">
+                <PARAM NAME="path">
+                    <VALUE>./resources/morph/zaliz.dct</VALUE>
+                </PARAM>
+                <PARAM NAME="Tokeniser_resourceType">
+                    <VALUE>Tokeniser</VALUE>
+                </PARAM>
+                <PARAM NAME="predMorphPhaseTemplate">
+                    <VALUE>({Token:kind=word}{Token:}*)?{Gramm:TYPE=unknown}</VALUE>
+                </PARAM>
+            </RESOURCE>
+
             <RESOURCE NAME="Russian_ZalizApplier" TYPE="RusMorphDictsApplier">
                 <PARAM NAME="path">
                     <VALUE>./resources/morph/zaliz.dct</VALUE>
@@ -204,6 +276,19 @@
                 <PARAM NAME="Morph_type">
                     <VALUE>Gramm</VALUE>
                 </PARAM>
+            </RESOURCE>
+
+            <RESOURCE NAME="Russian_VNPExtractor" TYPE="VNPExtractor">
+            </RESOURCE>
+
+            <RESOURCE NAME="Russian_VNPExtractor2" TYPE="VNPExtractor2">
+            </RESOURCE>
+
+
+            <RESOURCE NAME="Russian_TrainingData" TYPE="TrainingData">
+            </RESOURCE>
+
+            <RESOURCE NAME="Russian_PrepAttachment" TYPE="PrepAttachment">
             </RESOURCE>
 
 
@@ -223,7 +308,17 @@
                 <PARAM NAME="predMorphPhase">
                     <VALUE>./resources/starlingMorph/PredMorph.scape</VALUE>
                 </PARAM>
-                <PARAM NAME="specialWords">Eu
+                <PARAM NAME="specialWords">
+                    <VALUE>./resources/starlingMorph/specialWords.dct</VALUE>
+                </PARAM>
+                <PARAM NAME="logging">
+                    <VALUE>true</VALUE>
+                </PARAM>
+            </RESOURCE>
+
+            <RESOURCE NAME="Russian_StarlingOnlyAccentMorphApplier" TYPE="StarlingOnlyAccentMorphApplier">
+                <PARAM NAME="targetType">
+                    <VALUE>Gramm</VALUE>
                 </PARAM>
                 <PARAM NAME="bagOfWordsPath">
                     <VALUE>./resources/starlingMorph/accentsBag.bin</VALUE>
@@ -309,6 +404,19 @@
             <CHAIN NAME="MorphChain">
                 <REF RESOURCE="Common_Cleanup"/>
                 <REF RESOURCE="Russian_Tokeniser"/>
+                <REF RESOURCE="Russian_ZalizApplier"/>
+                <!--REF RESOURCE="Russian_CommaProcessor"/-->
+                <REF RESOURCE="Russian_NumbersProcessor"/>
+                <REF RESOURCE="Russian_MorphMinimizator"/>
+                <REF RESOURCE="Russian_MorphInvarsConverter"/>
+                <!--REF RESOURCE="Russian_SuperMorphInvarsConverter"/-->
+                <!--REF RESOURCE="Russian_Morph_vs_SuperMorph_Minimizator"/-->
+                <!--REF RESOURCE="Russian_UnknownMorphGenerator"/-->
+            </CHAIN>
+
+            <CHAIN NAME="NativeMorphChain">
+                <REF RESOURCE="Common_Cleanup"/>
+                <REF RESOURCE="Russian_Tokeniser"/>
                 <REF RESOURCE="Russian_StarlingNativeMorphApplier"/>
                 <REF RESOURCE="Russian_NumbersProcessor"/>
                 <REF RESOURCE="Russian_MorphMinimizator"/>
@@ -317,6 +425,144 @@
                 <!--REF RESOURCE="Russian_UnknownMorphGenerator"/-->
                 <!--REF RESOURCE="Russian_SuperMorphInvarsConverter"/-->
                 <!--REF RESOURCE="Russian_Morph_vs_SuperMorph_Minimizator"/-->
+            </CHAIN>
+
+            <CHAIN NAME="MorphChainWithFreq">
+                <REF RESOURCE="Common_Cleanup"/>
+                <REF RESOURCE="Russian_Tokeniser"/>
+                <REF RESOURCE="Russian_ZalizApplier"/>
+                <!--REF RESOURCE="Russian_CommaProcessor"/-->
+                <REF RESOURCE="Russian_NumbersProcessor"/>
+                <REF RESOURCE="Russian_MorphMinimizator"/>
+                <REF RESOURCE="Russian_MorphInvarsConverter"/>
+                <REF RESOURCE="Russian_FreqDictApplier"/>
+                <!--REF RESOURCE="Russian_SuperMorphInvarsConverter"/-->
+                <!--REF RESOURCE="Russian_Morph_vs_SuperMorph_Minimizator"/-->
+                <!--REF RESOURCE="Russian_UnknownMorphGenerator"/-->
+            </CHAIN>
+
+            <CHAIN NAME="NativeMorphChainWithFreq">
+                <REF RESOURCE="Common_Cleanup"/>
+                <REF RESOURCE="Russian_Tokeniser"/>
+                <REF RESOURCE="Russian_StarlingNativeMorphApplier"/>
+                <REF RESOURCE="Russian_NumbersProcessor"/>
+                <REF RESOURCE="Russian_MorphMinimizator"/>
+                <REF RESOURCE="Russian_MorphInvarsConverter"/>
+                <REF RESOURCE="Russian_FreqDictApplier"/>
+
+                <!--REF RESOURCE="Russian_UnknownMorphGenerator"/-->
+                <!--REF RESOURCE="Russian_SuperMorphInvarsConverter"/-->
+                <!--REF RESOURCE="Russian_Morph_vs_SuperMorph_Minimizator"/-->
+            </CHAIN>
+
+            <CHAIN NAME="MorphChainGov">
+                <REF RESOURCE="Common_Cleanup"/>
+                <REF RESOURCE="Russian_Tokeniser"/>
+                <REF RESOURCE="Russian_ZalizApplier"/>
+                <!--REF RESOURCE="Russian_CommaProcessor"/-->
+                <REF RESOURCE="Russian_NumbersProcessor"/>
+                <REF RESOURCE="Russian_MorphMinimizator"/>
+                <REF RESOURCE="Russian_MorphInvarsConverter"/>
+                <REF RESOURCE="Russian_MorphGovModelMultiplier"/>
+                <!--REF RESOURCE="Russian_SuperMorphInvarsConverter"/-->
+                <!--REF RESOURCE="Russian_Morph_vs_SuperMorph_Minimizator"/-->
+                <!--REF RESOURCE="Russian_UnknownMorphGenerator"/-->
+            </CHAIN>
+
+            <CHAIN NAME="MorphChainUnknown">
+                <REF RESOURCE="Common_Cleanup"/>
+                <REF RESOURCE="Russian_Tokeniser"/>
+                <REF RESOURCE="Russian_ZalizApplier"/>
+                <!--REF RESOURCE="Russian_CommaProcessor"/-->
+                <REF RESOURCE="Russian_NumbersProcessor"/>
+                <REF RESOURCE="Russian_MorphMinimizator"/>
+                <REF RESOURCE="Russian_UnknownMorphGenerator"/>
+                <REF RESOURCE="Russian_UnknownMorphFsmApplier"/>
+                <REF RESOURCE="Russian_MorphInvarsConverter"/>
+                <!--REF RESOURCE="Russian_SuperMorphInvarsConverter"/-->
+                <!--REF RESOURCE="Russian_Morph_vs_SuperMorph_Minimizator"/-->
+            </CHAIN>
+
+            <CHAIN NAME="MorphChainWithFreqUnknown">
+                <REF RESOURCE="Common_Cleanup"/>
+                <REF RESOURCE="Russian_Tokeniser"/>
+                <REF RESOURCE="Russian_ZalizApplier"/>
+                <!--REF RESOURCE="Russian_CommaProcessor"/-->
+                <REF RESOURCE="Russian_NumbersProcessor"/>
+                <REF RESOURCE="Russian_MorphMinimizator"/>
+                <REF RESOURCE="Russian_UnknownMorphGenerator"/>
+                <REF RESOURCE="Russian_UnknownMorphFsmApplier"/>
+                <REF RESOURCE="Russian_MorphInvarsConverter"/>
+                <REF RESOURCE="Russian_FreqDictApplier"/>
+                <!--REF RESOURCE="Russian_SuperMorphInvarsConverter"/-->
+                <!--REF RESOURCE="Russian_Morph_vs_SuperMorph_Minimizator"/-->
+                <!--REF RESOURCE="Russian_UnknownMorphGenerator"/-->
+            </CHAIN>
+
+            <CHAIN NAME="VNPExtractorChain">
+                <REF RESOURCE="Common_Cleanup"/>
+                <REF RESOURCE="Russian_Tokeniser"/>
+                <REF RESOURCE="Russian_ZalizApplier"/>
+                <!--REF RESOURCE="Russian_CommaProcessor"/-->
+                <REF RESOURCE="Russian_NumbersProcessor"/>
+                <REF RESOURCE="Russian_MorphMinimizator"/>
+                <REF RESOURCE="Russian_MorphInvarsConverter"/>
+                <!--REF RESOURCE="Russian_SuperMorphInvarsConverter"/-->
+                <!--REF RESOURCE="Russian_Morph_vs_SuperMorph_Minimizator"/-->
+                <!--REF RESOURCE="Russian_UnknownMorphGenerator"/-->
+                <!-- REF RESOURCE="Russian_MorphMerger"/-->
+                <REF RESOURCE="Russian_VNPExtractor"/>
+            </CHAIN>
+
+
+            <CHAIN NAME="VNPExtractorChain2">
+                <REF RESOURCE="Common_Cleanup"/>
+                <REF RESOURCE="Russian_Tokeniser"/>
+                <REF RESOURCE="Russian_ZalizApplier"/>
+                <!--REF RESOURCE="Russian_CommaProcessor"/-->
+                <REF RESOURCE="Russian_NumbersProcessor"/>
+                <REF RESOURCE="Russian_MorphMinimizator"/>
+                <REF RESOURCE="Russian_UnknownMorphGenerator"/>
+                <REF RESOURCE="Russian_MorphInvarsConverter"/>
+                <!--REF RESOURCE="Russian_SuperMorphInvarsConverter"/-->
+                <!--REF RESOURCE="Russian_Morph_vs_SuperMorph_Minimizator"/-->
+                <!--REF RESOURCE="Russian_UnknownMorphGenerator"/-->
+                <!-- REF RESOURCE="Russian_MorphMerger"/-->
+                <REF RESOURCE="Russian_VNPExtractor2"/>
+            </CHAIN>
+
+
+            <CHAIN NAME="MorphTrainingData">
+                <REF RESOURCE="Common_Cleanup"/>
+                <REF RESOURCE="Russian_Tokeniser"/>
+                <REF RESOURCE="Russian_ZalizApplier"/>
+                <!--REF RESOURCE="Russian_CommaProcessor"/-->
+                <REF RESOURCE="Russian_NumbersProcessor"/>
+                <REF RESOURCE="Russian_MorphMinimizator"/>
+                <REF RESOURCE="Russian_UnknownMorphGenerator"/>
+                <REF RESOURCE="Russian_MorphInvarsConverter"/>
+                <!--REF RESOURCE="Russian_SuperMorphInvarsConverter"/-->
+                <!--REF RESOURCE="Russian_Morph_vs_SuperMorph_Minimizator"/-->
+                <!--REF RESOURCE="Russian_UnknownMorphGenerator"/-->
+                <!-- REF RESOURCE="Russian_MorphMerger"/-->
+                <REF RESOURCE="Russian_TrainingData"/>
+            </CHAIN>
+
+
+            <CHAIN NAME="PrepAttachment">
+                <REF RESOURCE="Common_Cleanup"/>
+                <REF RESOURCE="Russian_Tokeniser"/>
+                <REF RESOURCE="Russian_ZalizApplier"/>
+                <!--REF RESOURCE="Russian_CommaProcessor"/-->
+                <REF RESOURCE="Russian_NumbersProcessor"/>
+                <REF RESOURCE="Russian_MorphMinimizator"/>
+                <REF RESOURCE="Russian_UnknownMorphGenerator"/>
+                <REF RESOURCE="Russian_MorphInvarsConverter"/>
+                <!--REF RESOURCE="Russian_SuperMorphInvarsConverter"/-->
+                <!--REF RESOURCE="Russian_Morph_vs_SuperMorph_Minimizator"/-->
+                <!--REF RESOURCE="Russian_UnknownMorphGenerator"/-->
+                <!-- REF RESOURCE="Russian_MorphMerger"/-->
+                <REF RESOURCE="Russian_PrepAttachment"/>
             </CHAIN>
 
 

@@ -1,115 +1,111 @@
 <?xml version="1.0" encoding="windows-1251"?>
-<!--
-  ~ Copyright Anatoly Starostin (c) 2017.
-  -->
-
 <project name="treetonCore.info" default="nothing">
-    <dirname property="project.basedir" file="${ant.file}${file.separator}..${file.separator}.."/>
-    <import file="customBuild.xml"/>
+  <dirname property="project.basedir" file="${ant.file}${file.separator}..${file.separator}.."/>
+  <import file="customBuild.xml"/>
 
-    <for list="${treetonCore.deps}" param="cur">
-        <sequential>
-            <import file="${@{cur}.module.basedir}${file.separator}build.xml"/>
-        </sequential>
-    </for>
+  <for list="${treetonCore.deps}" param="cur">
+    <sequential>
+      <import file="${@{cur}.module.basedir}${file.separator}build.xml"/>
+    </sequential>
+  </for>
 
-    <path id="_treetonCore.classpath"/>
+  <path id="_treetonCore.classpath"/>
 
-    <for list="${treetonCore.deps}" param="cur">
-        <sequential>
-            <collect pathId="_treetonCore.classpath">
-                <path>
-                    <pathelement location="${@{cur}.module.outputdir}"/>
-                    <path refid="@{cur}.classpath"/>
-                </path>
-            </collect>
-        </sequential>
-    </for>
+  <for list="${treetonCore.deps}" param="cur">
+    <sequential>
+      <collect pathId="_treetonCore.classpath">
+        <path>
+          <pathelement location="${@{cur}.module.outputdir}"/>
+          <path refid="@{cur}.classpath"/>
+        </path>
+      </collect>
+    </sequential>
+  </for>
 
-    <path id="treetonCore.classpath">
-        <fileset dir="${project.third-party.dir}">
-            <patternset refid="treetonCore.libraries"/>
-        </fileset>
-        <path refid="_treetonCore.classpath"/>
-    </path>
-
-
-    <path id="treetonCore.testclasspath"/>
-
-    <for list="${treetonCore.deps}" param="cur">
-        <sequential>
-            <collect pathId="treetonCore.testclasspath">
-                <path>
-                    <pathelement location="${@{cur}.module.testoutputdir}"/>
-                    <path refid="@{cur}.testclasspath"/>
-                </path>
-            </collect>
-        </sequential>
-    </for>
+  <path id="treetonCore.classpath">
+    <fileset dir="${project.third-party.dir}">
+      <patternset refid="treetonCore.libraries"/>
+    </fileset>
+    <path refid="_treetonCore.classpath"/>
+  </path>
 
 
-    <path id="_treetonCore.build.classpath"/>
+  <path id="treetonCore.testclasspath"/>
 
-    <for list="${treetonCore.deps}" param="cur">
-        <sequential>
-            <collect pathId="_treetonCore.build.classpath">
-                <path>
-                    <pathelement location="${@{cur}.distrib.jar}"/>
-                    <path refid="@{cur}.build.classpath"/>
-                </path>
-            </collect>
-        </sequential>
-    </for>
+  <for list="${treetonCore.deps}" param="cur">
+    <sequential>
+      <collect pathId="treetonCore.testclasspath">
+        <path>
+          <pathelement location="${@{cur}.module.testoutputdir}"/>
+          <path refid="@{cur}.testclasspath"/>
+        </path>
+      </collect>
+    </sequential>
+  </for>
 
-    <path id="treetonCore.build.classpath">
-        <fileset dir="${project.libs.dir}">
-            <patternset refid="treetonCore.libraries"/>
-        </fileset>
-        <path refid="_treetonCore.build.classpath"/>
-    </path>
 
-    <path id="treetonCore.build.testclasspath"/>
 
-    <for list="${treetonCore.deps}" param="cur">
-        <sequential>
-            <collect pathId="treetonCore.build.testclasspath">
-                <path>
-                    <pathelement location="${@{cur}.distrib.tests.jar}"/>
-                    <path refid="@{cur}.build.testclasspath"/>
-                </path>
-            </collect>
-        </sequential>
-    </for>
+  <path id="_treetonCore.build.classpath"/>
 
-    <dirset id="treetonCore.sourcedirset" dir="${treetonCore.module.basedir}"/>
+  <for list="${treetonCore.deps}" param="cur">
+    <sequential>
+      <collect pathId="_treetonCore.build.classpath">
+        <path>
+          <pathelement location="${@{cur}.distrib.jar}"/>
+          <path refid="@{cur}.build.classpath"/>
+        </path>
+      </collect>
+    </sequential>
+  </for>
 
-    <for list="${treetonCore.sourcedirs}" param="cur">
-        <sequential>
-            <collect dirsetId="treetonCore.sourcedirset">
-                <patternset>
-                    <include name="@{cur}"/>
-                </patternset>
-            </collect>
-        </sequential>
-    </for>
+  <path id="treetonCore.build.classpath">
+    <fileset dir="${project.libs.dir}">
+      <patternset refid="treetonCore.libraries"/>
+    </fileset>
+    <path refid="_treetonCore.build.classpath"/>
+  </path>
 
-    <target name="treetonCore.findSourceDir">
-        <condition property="treetonCore.multiSourcesSpecified">
-            <and>
-                <isset property="treetonCore.sourcedirs"/>
-            </and>
-        </condition>
-    </target>
+  <path id="treetonCore.build.testclasspath"/>
 
-    <target name="treetonCore.setSourceDir" depends="treetonCore.findSourceDir"
-            unless="treetonCore.multiSourcesSpecified">
-        <collect dirsetId="treetonCore.sourcedirset">
-            <patternset>
-                <include name="src"/>
-            </patternset>
-        </collect>
-        <property name="treetonCore.sourcedirs" value="src"/>
-    </target>
+  <for list="${treetonCore.deps}" param="cur">
+    <sequential>
+      <collect pathId="treetonCore.build.testclasspath">
+        <path>
+          <pathelement location="${@{cur}.distrib.tests.jar}"/>
+          <path refid="@{cur}.build.testclasspath"/>
+        </path>
+      </collect>
+    </sequential>
+  </for>
+    
+      <dirset id="treetonCore.sourcedirset" dir="${treetonCore.module.basedir}"/>
 
-    <target name="nothing"/>
+  <for list="${treetonCore.sourcedirs}" param="cur">
+    <sequential>
+      <collect dirsetId="treetonCore.sourcedirset">
+        <patternset>
+           <include name="@{cur}"/>
+        </patternset>
+      </collect>
+    </sequential>
+  </for>
+
+  <target name="treetonCore.findSourceDir">
+    <condition property="treetonCore.multiSourcesSpecified">
+      <and>
+        <isset property="treetonCore.sourcedirs" />
+      </and>
+    </condition>
+  </target>
+
+  <target name="treetonCore.setSourceDir" depends="treetonCore.findSourceDir" unless="treetonCore.multiSourcesSpecified">
+      <collect dirsetId="treetonCore.sourcedirset">
+        <patternset>
+           <include name="src"/>
+        </patternset>
+      </collect>
+      <property name="treetonCore.sourcedirs" value="src"/>
+  </target>
+
+  <target name="nothing"/>
 </project>

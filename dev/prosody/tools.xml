@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<project name="mdl.project" default="make-parser">
+    <import file="buildInfo.xml"/>
+
+    <path id="lexer.classpath">
+      <fileset dir="./resources/lexerlib">
+        <include name="*.jar"/>
+      </fileset>
+    </path>
+
+    <path id="cup.classpath">
+      <fileset dir="${project.third-party.dir}">
+        <patternset refid="java_cup.library"/>
+      </fileset>
+    </path>
+
+    <target name="make-lexer">
+      <java classname="JFlex.Main" failonerror="true">
+        <arg line="-d ./src/treeton/prosody/mdlcompiler -nobak -q ./resources/mdl.flex"/>
+        <classpath refid="lexer.classpath"/>
+      </java>
+      <replace file="src/treeton/prosody/mdlcompiler/MdlLexer.java" token="ZZ_BUFFERSIZE = 16384" value="ZZ_BUFFERSIZE = 512000"/>
+    </target>
+
+  <target name="make-parser">
+    <java classname="java_cup.Main" failonerror="true">
+      <arg value="-dir"/>       <arg value="./src/treeton/prosody/mdlcompiler"/>
+      <arg value="-package"/>   <arg value="treeton.prosody.mdlcompiler"/>
+      <arg value="-parser"/>    <arg value="MdlParser"/>
+      <arg value="-symbols"/>   <arg value="MdlSymbols"/>
+      <arg value="-interface"/>
+      <arg value="./resources/mdl.cup"/>
+      <classpath refid="cup.classpath"/>
+    </java>
+  </target>
+
+  <target name="make-parser-debug">
+    <java classname="java_cup.Main" failonerror="true">
+      <arg value="-dir"/>       <arg value="./src/treeton/prosody/mdlcompiler"/>
+      <arg value="-package"/>   <arg value="treeton.prosody.mdlcompiler"/>
+      <arg value="-parser"/>    <arg value="MdlParser"/>
+      <arg value="-symbols"/>   <arg value="MdlSymbols"/>
+      <arg value="-interface"/>
+      <arg value="-debug"/>
+      <arg value="./resources/mdl.cup"/>
+      <classpath refid="cup.classpath"/>
+    </java>
+  </target>
+
+  <target name="make-parser-dump">
+    <java classname="java_cup.Main" failonerror="true">
+      <arg value="-dir"/>       <arg value="./src/treeton/prosody/mdlcompiler"/>
+      <arg value="-package"/>   <arg value="treeton.prosody.mdlcompiler"/>
+      <arg value="-parser"/>    <arg value="MdlParser"/>
+      <arg value="-symbols"/>   <arg value="MdlSymbols"/>
+      <arg value="-interface"/>
+      <arg value="-dump"/>
+      <arg value="./resources/mdl.cup"/>
+      <classpath refid="cup.classpath"/>
+    </java>
+  </target>
+</project>
