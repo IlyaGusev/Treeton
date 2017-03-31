@@ -13,15 +13,15 @@
         <mkdir dir="${project.distrib.dir}" />
     </target> 
 
-    <target name="build" depends="lingvToolsRu.build,scape.build,lingvTools.build,treetonGui.build,treetonCore.build,treetonRus.build"/>
+    <target name="build" depends="lingvToolsRu.build,scape.build,lingvTools.build,treetonGui.build,treetonCore.build,treetonRus.build,prosody.build"/>
 
-    <target name="compile" depends="lingvToolsRu.compile,scape.compile,lingvTools.compile,treetonGui.compile,treetonCore.compile,treetonRus.compile"/>
+    <target name="compile" depends="lingvToolsRu.compile,scape.compile,lingvTools.compile,treetonGui.compile,treetonCore.compile,treetonRus.compile,prosody.compile"/>
 
-    <target name="test" depends="lingvToolsRu.test,scape.test,lingvTools.test,treetonGui.test,treetonCore.test,treetonRus.test"/>
+    <target name="test" depends="lingvToolsRu.test,scape.test,lingvTools.test,treetonGui.test,treetonCore.test,treetonRus.test,prosody.test"/>
 
-    <target name="compile.tests" depends="lingvToolsRu.compile.tests,scape.compile.tests,lingvTools.compile.tests,treetonGui.compile.tests,treetonCore.compile.tests,treetonRus.compile.tests"/>
+    <target name="compile.tests" depends="lingvToolsRu.compile.tests,scape.compile.tests,lingvTools.compile.tests,treetonGui.compile.tests,treetonCore.compile.tests,treetonRus.compile.tests,prosody.compile.tests"/>
 
-    <target name="clean" depends="lingvToolsRu.clean,scape.clean,lingvTools.clean,treetonGui.clean,treetonCore.clean,treetonRus.clean">
+    <target name="clean" depends="lingvToolsRu.clean,scape.clean,lingvTools.clean,treetonGui.clean,treetonCore.clean,treetonRus.clean,prosody.clean">
         <delete includeemptydirs="true">
             <fileset dir="${project.distrib.dir}" includes="**/*"/>
         </delete>

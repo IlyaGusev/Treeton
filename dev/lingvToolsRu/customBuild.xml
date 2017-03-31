@@ -8,8 +8,6 @@
     <import file="../../common.xml"/>
 
     <patternset id="lingvToolsRu.libraries">
-        <patternset refid="morph.library"/>
-        <patternset refid="regexpwalker.library"/>
         <!--
           Example:
 

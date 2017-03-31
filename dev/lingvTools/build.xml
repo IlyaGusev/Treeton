@@ -1,8 +1,4 @@
 <?xml version="1.0" encoding="windows-1251"?>
-<!--
-  ~ Copyright Anatoly Starostin (c) 2017.
-  -->
-
 <project name="lingvTools.project" default="help">
     <import file="buildInfo.xml"/>
 
@@ -16,8 +12,7 @@
         </copy>
     </target>
 
-    <target name="lingvTools.build" depends="lingvTools.compile,lingvTools.copylibs,treetonCore.build,scape.build"
-            description="Create distribution kit">
+    <target name="lingvTools.build" depends="lingvTools.compile,lingvTools.copylibs,treetonCore.build,scape.build" description="Create distribution kit">
         <pathconvert property="lingvTools.newclasspath" pathsep=" ">
             <path refid="lingvTools.build.classpath"/>
             <map from="${project.distrib.dir}${file.separator}" to=""/>
@@ -41,7 +36,7 @@
         <pathconvert property="lingvTools.newclasspath_fortests" pathsep=" ">
             <path refid="lingvTools.build.classpath"/>
             <path>
-                <pathelement location="${lingvTools.distrib.jar}"/>
+               <pathelement location="${lingvTools.distrib.jar}"/>
             </path>
             <map from="${project.distrib.dir}${file.separator}" to="..${file.separator}"/>
         </pathconvert>
@@ -87,14 +82,11 @@
         <antcall target="lingvTools.distribTarget"/>
     </target>
 
-    <target name="lingvTools.compile" depends="treetonCore.compile,scape.compile,lingvTools.setSourceDir"
-            description="Compile module ${lingvTools.module.name}; production classes">
+    <target name="lingvTools.compile" depends="treetonCore.compile,scape.compile,lingvTools.setSourceDir" description="Compile module ${lingvTools.module.name}; production classes">
         <mkdir dir="${lingvTools.module.outputdir}"/>
 
-        <javac destdir="${lingvTools.module.outputdir}" debug="${compiler.debug}"
-               nowarn="${compiler.generate.no.warnings}" encoding="${compiler.encoding}"
-               memoryMaximumSize="${compiler.max.memory}" fork="true"
-               srcdir="${lingvTools.module.basedir}${file.separator}src" excludes="${lingvTools.excludeFromCompile}">
+        <javac destdir="${lingvTools.module.outputdir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" encoding="${compiler.encoding}"
+               memoryMaximumSize="${compiler.max.memory}" fork="true" srcdir="${lingvTools.module.basedir}${file.separator}src" excludes="${lingvTools.excludeFromCompile}">
             <compilerarg line="${compiler.args}"/>
             <classpath refid="lingvTools.classpath"/>
         </javac>
@@ -105,15 +97,15 @@
             </fileset>
         </copy>
 
-        <for list="${lingvTools.sourcedirs}" param="cur">
-            <sequential>
-                <copy todir="${lingvTools.module.outputdir}">
-                    <fileset dir="${lingvTools.module.basedir}${file.separator}@{cur}">
-                        <include name="**${file.separator}*"/>
-                        <exclude name="**${file.separator}*.java"/>
-                    </fileset>
-                </copy>
-            </sequential>
+       <for list="${lingvTools.sourcedirs}" param="cur">
+          <sequential>
+            <copy todir="${lingvTools.module.outputdir}">
+              <fileset dir="${lingvTools.module.basedir}${file.separator}@{cur}">
+                  <include name="**${file.separator}*"/>
+                  <exclude name="**${file.separator}*.java"/>
+              </fileset>
+            </copy>
+          </sequential>
         </for>
     </target>
 
@@ -125,11 +117,9 @@
         </filepath>
     </available>
 
-    <target name="lingvTools.compile.tests" depends="lingvTools.compile,treetonCore.compile.tests,scape.compile.tests"
-            description="compile module ${lingvTools.module.name}; test classes" if="lingvTools.testsLocated">
+    <target name="lingvTools.compile.tests" depends="lingvTools.compile,treetonCore.compile.tests,scape.compile.tests" description="compile module ${lingvTools.module.name}; test classes" if="lingvTools.testsLocated">
         <mkdir dir="${lingvTools.module.testoutputdir}"/>
-        <javac destdir="${lingvTools.module.testoutputdir}" debug="${compiler.debug}"
-               nowarn="${compiler.generate.no.warnings}" encoding="${compiler.encoding}"
+        <javac destdir="${lingvTools.module.testoutputdir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" encoding="${compiler.encoding}"
                memoryMaximumSize="${compiler.max.memory}" fork="true" excludes="${lingvTools.excludeTestsFromCompile}">
             <compilerarg line="${compiler.args}"/>
             <classpath refid="lingvTools.classpath"/>
@@ -159,17 +149,15 @@
         </for>
     </target>
 
-    <target name="lingvTools.run-tests" description="junit tests" depends="lingvTools.compile.tests"
-            if="lingvTools.testsLocated" unless="lingvTools.disableTests">
+    <target name="lingvTools.run-tests" description="junit tests" depends="lingvTools.compile.tests" if="lingvTools.testsLocated" unless="lingvTools.disableTests">
         <delete dir="${lingvTools.module.reportsdir}"/>
         <mkdir dir="${lingvTools.module.reportsdir}${file.separator}raw${file.separator}"/>
         <mkdir dir="${lingvTools.module.reportsdir}${file.separator}run${file.separator}"/>
 
         <for pathref="lingvTools.testclasspath" param="cur">
             <sequential>
-                <junit printsummary="withOutAndErr"
-                       dir="${lingvTools.module.reportsdir}${file.separator}run${file.separator}">
-                    <syspropertyset refid="lingvTools.testProperties"/>
+                <junit printsummary="withOutAndErr" dir="${lingvTools.module.reportsdir}${file.separator}run${file.separator}">
+		    <syspropertyset refid="lingvTools.testProperties"/>
 
                     <classpath>
                         <path refid="lingvTools.classpath"/>
@@ -177,10 +165,8 @@
                         <pathelement location="${lingvTools.module.outputdir}"/>
                         <pathelement location="${lingvTools.module.testoutputdir}"/>
                     </classpath>
-
-                    <batchtest fork="yes" filtertrace="yes"
-                               todir="${lingvTools.module.reportsdir}${file.separator}raw${file.separator}"
-                               if="lingvTools.transitiveTests">
+        
+                    <batchtest fork="yes" filtertrace="yes" todir="${lingvTools.module.reportsdir}${file.separator}raw${file.separator}" if="lingvTools.transitiveTests">
                         <formatter type="xml"/>
                         <fileset dir="@{cur}" includes="**${file.separator}*TestCase.class"/>
                     </batchtest>
@@ -189,25 +175,23 @@
         </for>
 
         <junit printsummary="withOutAndErr" dir="${lingvTools.module.reportsdir}${file.separator}run${file.separator}">
-            <syspropertyset refid="lingvTools.testProperties"/>
+	    <syspropertyset refid="lingvTools.testProperties"/>
 
             <classpath>
-                <path refid="lingvTools.classpath"/>
-                <path refid="lingvTools.testclasspath"/>
-                <pathelement location="${lingvTools.module.outputdir}"/>
-                <pathelement location="${lingvTools.module.testoutputdir}"/>
+               <path refid="lingvTools.classpath"/>
+               <path refid="lingvTools.testclasspath"/>
+               <pathelement location="${lingvTools.module.outputdir}"/>
+               <pathelement location="${lingvTools.module.testoutputdir}"/>
             </classpath>
-
-            <batchtest fork="yes" filtertrace="yes"
-                       todir="${lingvTools.module.reportsdir}${file.separator}raw${file.separator}">
+        
+            <batchtest fork="yes" filtertrace="yes" todir="${lingvTools.module.reportsdir}${file.separator}raw${file.separator}">
                 <formatter type="xml"/>
                 <fileset dir="${lingvTools.module.testoutputdir}" includes="**${file.separator}*TestCase.class"/>
             </batchtest>
         </junit>
     </target>
 
-    <target name="lingvTools.test" depends="lingvTools.run-tests" if="lingvTools.testsLocated"
-            unless="lingvTools.disableTests">
+    <target name ="lingvTools.test" depends="lingvTools.run-tests" if="lingvTools.testsLocated" unless="lingvTools.disableTests">
         <junitreport todir="${lingvTools.module.reportsdir}">
             <fileset dir="${lingvTools.module.reportsdir}${file.separator}raw${file.separator}">
                 <include name="TEST-*.xml"/>
@@ -236,7 +220,7 @@
         <echo message=""/>
         <echo message="   build             - builds the module"/>
         <echo message="   clean             - cleans the module, removes all generated files"/>
-        <echo message="   test              - runs tests and generates reports"/>
+        <echo message="   test              - runs tests and generates reports" />
         <echo message=""/>
         <echo message="==============================================================================="/>
     </target>

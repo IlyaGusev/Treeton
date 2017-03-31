@@ -1,0 +1,218 @@
+import treeton.prosody.mdlcompiler.grammar.ast.*;
+import treeton.prosody.mdlcompiler.grammar.*;
+import treeton.prosody.mdlcompiler.*;
+import java_cup.runtime.*;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileNotFoundException;
+
+parser code  {:
+  private File grammarFile;
+  private MdlCompiler mdlCompiler;
+  private String grammarBody;
+  
+  public MdlParser(File grammarFile, MdlCompiler mdlCompiler, String encoding) throws IOException {
+      InputStream is = new FileInputStream(grammarFile);
+      byte[] buf = new byte[(int) grammarFile.length()];
+      is.read(buf, 0, buf.length);
+      is.close();
+
+      MdlLexer scanner = (encoding == null || encoding.trim().length()==0)?
+                          new MdlLexer(new InputStreamReader(new ByteArrayInputStream(buf))) :
+                          new MdlLexer(new InputStreamReader(new ByteArrayInputStream(buf), encoding));
+      setScanner(scanner);
+
+      if (encoding != null)
+          this.grammarBody = new String(buf, encoding);
+      else
+          this.grammarBody = new String(buf);
+
+      this.grammarFile = grammarFile;
+      this.mdlCompiler = mdlCompiler;
+  }
+  
+  public String getGrammarBody() {
+    return grammarBody;
+  }
+
+  public File getGrammarFile() {
+    return this.grammarFile;
+  }
+
+  public MdlCompiler getMdlCompiler() {
+    return this.mdlCompiler;
+  }
+  
+  public void report_error(String message, Object info) {
+    StringBuffer m = new StringBuffer("Error ");
+
+    if (info instanceof java_cup.runtime.Symbol) 
+      m.append(this.grammarFile.getPath() +
+               " ("+((java_cup.runtime.Symbol)info).value.toString()+")" );
+     
+    m.append(" : "+message);
+   
+    System.out.println(m);
+  }
+   
+  public void report_fatal_error(String message, Object info) {
+    report_error(message, info);
+    throw new RuntimeException("Fatal Syntax Error");
+  }
+:};
+
+// Terminals
+//----------
+// keywords
+terminal    TreevialSymbol METER;
+terminal    TreevialSymbol PRIORITY;
+terminal    TreevialSymbol THRESHOLD;
+terminal    TreevialSymbol NAME;
+
+terminal    TreevialSymbol OBLIGATORY_STRESSED;
+terminal    TreevialSymbol STRESSED;
+terminal    TreevialSymbol OBLIGATORY_UNSTRESSED;
+terminal    TreevialSymbol UNSTRESSED;
+
+// literals
+terminal    TreevialSymbol STRING_LITERAL; // value: String
+terminal    TreevialSymbol INTEGER_LITERAL; // value: Long
+terminal    TreevialSymbol BOOLEAN_LITERAL; // value: Boolean
+terminal    TreevialSymbol NULL_LITERAL; // value: Object (null)
+terminal    TreevialSymbol FLOATING_POINT_LITERAL; // value: Double
+terminal    TreevialSymbol CHARACTER_LITERAL; // value: Character
+// separators
+terminal    TreevialSymbol LPAREN;
+terminal    TreevialSymbol RPAREN;
+terminal    TreevialSymbol LBRACE;
+terminal    TreevialSymbol RBRACE;
+terminal    TreevialSymbol LBRACK;
+terminal    TreevialSymbol RBRACK;
+terminal    TreevialSymbol SEMICOLON;
+// operators
+terminal    TreevialSymbol QUESTION;
+terminal    TreevialSymbol PLUS;
+terminal    TreevialSymbol MULT;
+terminal    TreevialSymbol OR;
+// identifier
+terminal    TreevialSymbol IDENTIFIER;
+
+// Non terminals
+//--------------
+non terminal treeton.prosody.mdlcompiler.grammar.ast.CompilationUnit CompilationUnit;
+non terminal MeterDescriptionList MeterDescriptionList;
+non terminal MeterDescription MeterDescription;
+non terminal MeterDescriptionMemberDeclarationList MeterDescriptionMemberDeclarationList;
+non terminal MeterDescriptionMemberDeclaration MeterDescriptionMemberDeclaration;
+non terminal PriorityDeclaration PriorityDeclaration;
+non terminal ThresholdDeclaration ThresholdDeclaration;
+non terminal MeterNameDeclaration MeterNameDeclaration;
+non terminal SyllConstraintOr SyllConstraintOr;
+non terminal SyllConstraintList SyllConstraintList;
+non terminal SyllConstraint SyllConstraint;
+non terminal SyllBasicPatternElement SyllBasicPatternElement;
+
+start with CompilationUnit;
+//=============================================================================
+// Productions
+//=============================================================================
+
+CompilationUnit ::=
+      MeterDescriptionList:e1
+      {: RESULT = new treeton.prosody.mdlcompiler.grammar.ast.CompilationUnit(e1,
+                      parser.getGrammarFile(), parser.getGrammarBody(), parser.getMdlCompiler());
+      :}
+;
+
+MeterDescriptionList ::=
+      MeterDescription:e1
+      {: RESULT = new MeterDescriptionList(e1); e1.parent = RESULT; :}
+    | MeterDescriptionList:e1 MeterDescription:e2
+      {: e1.add(e2); RESULT = e1; e2.parent = RESULT; :}
+;
+
+MeterDescription ::=
+    METER:e1 IDENTIFIER:e2
+    LBRACE:e3
+    MeterDescriptionMemberDeclarationList:e4
+    SyllConstraintOr:e5
+    RBRACE:e6
+    {: RESULT = new MeterDescription(e1, e2, e3, e4, e5, e6);
+       e4.parent = RESULT;
+    :}
+;
+
+MeterDescriptionMemberDeclarationList ::=
+    MeterDescriptionMemberDeclaration:e1
+      {: RESULT = new MeterDescriptionMemberDeclarationList(e1); e1.parent = RESULT; :}
+    | MeterDescriptionMemberDeclarationList:e1 MeterDescriptionMemberDeclaration:e2
+      {: e1.add(e2); RESULT = e1; e2.parent = RESULT; :}
+;
+
+MeterDescriptionMemberDeclaration ::=
+    PriorityDeclaration:e1 {: RESULT = new MeterDescriptionMemberDeclaration(e1); e1.parent = RESULT; :}
+    | ThresholdDeclaration:e1 {: RESULT = new MeterDescriptionMemberDeclaration(e1); e1.parent = RESULT; :}
+    | MeterNameDeclaration:e1 {: RESULT = new MeterDescriptionMemberDeclaration(e1); e1.parent = RESULT; :}
+;
+
+PriorityDeclaration ::=
+      PRIORITY:e1 INTEGER_LITERAL:e2 SEMICOLON:e3
+      {: RESULT = new PriorityDeclaration(e1, e2, e3); :}
+;
+
+ThresholdDeclaration ::=
+      THRESHOLD:e1 INTEGER_LITERAL:e2 SEMICOLON:e3
+      {: RESULT = new ThresholdDeclaration(e1, e2, e3); :}
+;
+
+MeterNameDeclaration ::=
+      NAME:e1 STRING_LITERAL:e2 SEMICOLON:e3
+      {: RESULT = new MeterNameDeclaration(e1, e2, e3); :}
+;
+
+//-----------------------------------------------------------------------------
+// Pattern declaration
+//-----------------------------------------------------------------------------
+// Pattern body
+SyllConstraintOr ::=
+    SyllConstraintList:e1
+      {: RESULT = new SyllConstraintOr(e1); e1.parent = RESULT; :}
+    | SyllConstraintOr:e1 OR SyllConstraintList:e2
+      {: e1.add(e2); RESULT = e1; e2.parent = RESULT; :}
+;
+
+SyllConstraintList ::=
+    SyllConstraint:e1
+      {: RESULT = new SyllConstraintList(e1); e1.parent = RESULT; :}
+    | SyllConstraintList:e1 SyllConstraint:e2
+      {: e1.add(e2); RESULT = e1; e2.parent = RESULT; :}
+;
+
+SyllConstraint ::=
+    LPAREN:e1 SyllConstraintOr:e2 RPAREN:e3
+      {: RESULT = new SyllConstraint(e1, e2, e3); e2.parent = RESULT; :}
+    | SyllBasicPatternElement:e1
+      {: RESULT = new SyllConstraint(e1); e1.parent = RESULT; :}
+    // kleene
+    | LPAREN:e1 SyllConstraintOr:e2 RPAREN:e3 MULT:e4
+      {: RESULT = new SyllConstraint(e1, e2, e3, e4); e2.parent = RESULT; :}
+    | LPAREN:e1 SyllConstraintOr:e2 RPAREN:e3 PLUS:e4
+      {: RESULT = new SyllConstraint(e1, e2, e3, e4); e2.parent = RESULT; :}
+    | LPAREN:e1 SyllConstraintOr:e2 RPAREN:e3 QUESTION:e4
+      {: RESULT = new SyllConstraint(e1, e2, e3, e4); e2.parent = RESULT; :}
+;
+
+// Basic Pattern Element
+SyllBasicPatternElement ::=
+      OBLIGATORY_STRESSED:e1
+      {: RESULT = new SyllBasicPatternElement(e1); :}
+    | STRESSED:e1
+      {: RESULT = new SyllBasicPatternElement(e1); :}
+    | OBLIGATORY_UNSTRESSED:e1
+      {: RESULT = new SyllBasicPatternElement(e1); :}
+    | UNSTRESSED:e1
+      {: RESULT = new SyllBasicPatternElement(e1); :}
+;
+
+
+

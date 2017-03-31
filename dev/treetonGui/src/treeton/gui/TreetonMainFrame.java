@@ -34,7 +34,6 @@ public class TreetonMainFrame extends JFrame
     public static final String CMD_HELP = "HELP";
     public static final String CMD_TYPESDCL = "TYPESDCL";
     public static final String CMD_ABOUT = "ABT";
-    public static final String CMD_PROFILE = "PROFILE";
     public static final String CMD_EXIT = "EXIT";
     public static final String CMD_TEXTEDIT = "TEXTEDIT";
 
@@ -320,12 +319,7 @@ public class TreetonMainFrame extends JFrame
     }
 
     protected void addBasicItems() {
-        JMenuItem item = new JMenuItem("Экспорт результатов профилирования...");
-        item.setActionCommand(CMD_PROFILE);
-        item.addActionListener(this);
-        addMenuItem(MENUNAME_FILE, item);
-
-        item = new JMenuItem("Выход");
+        JMenuItem item = new JMenuItem("Выход");
         item.setActionCommand(CMD_EXIT);
         item.addActionListener(this);
         addMenuItem(MENUNAME_FILE, item);
@@ -477,8 +471,6 @@ public class TreetonMainFrame extends JFrame
         } else if (CMD_HELP.equals(action)) {
         } else if (CMD_ABOUT.equals(action)) {
             new AboutDialog(this).setVisible(true);
-        } else if (CMD_PROFILE.equals(action)) {
-            ReportDialog.showReportDialog(this, "Ошибка", "Профайлер не поддерживается");
         }
     }
 

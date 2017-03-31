@@ -1,16 +1,3 @@
-/*
- * $:$:$ $:$:$[
- *
- * Copyright © Ontos AG
- *
- * Mittelstrasse 24
- * CH-2560 Nidau
- * Telefon +41 (0) 32 332 82 70
- * Fax +41 (0) 32 332 92 52
- * sales@ontos.ch
- *
- * ]$:$:$ $:$:$
- */
 package treeton.res.minimz;
 
 import treeton.res.minimz.TypeMatrixTriplet;

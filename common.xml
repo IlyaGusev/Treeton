@@ -36,7 +36,7 @@
   <typedef name="javaheaderfilter" classname="treeton.ant.tools.JavaHeaderFilter"  classpath="${project.antExtension.jar}"/>
   <typedef name="stringreplace" classname="treeton.ant.tools.StringReplace"  classpath="${project.antExtension.jar}"/>
 
-  <property name="modules.list" value="lingvToolsRu,scape,lingvTools,treetonGui,treetonCore,treetonRus,"/>
+  <property name="modules.list" value="lingvToolsRu,scape,lingvTools,treetonGui,treetonCore,treetonRus,prosody"/>
 
   <for list="${modules.list}" param="cur">
     <sequential>
@@ -53,11 +53,6 @@
     </sequential>
   </for>
 
-  <patternset id="gate.library">
-    <include name="gate${file.separator}*.jar"/>
-    <include name="gate${file.separator}*.zip"/>
-  </patternset>
-
   <patternset id="glf.library">
     <include name="glf${file.separator}*.jar"/>
     <include name="glf${file.separator}*.zip"/>
@@ -71,11 +66,6 @@
   <patternset id="looks.library">
     <include name="looks${file.separator}*.jar"/>
     <include name="looks${file.separator}*.zip"/>
-  </patternset>
-
-  <patternset id="morph.library">
-    <include name="morph${file.separator}*.jar"/>
-    <include name="morph${file.separator}*.zip"/>
   </patternset>
 
   <patternset id="collector.library">
@@ -93,16 +83,6 @@
     <include name="xerces${file.separator}*.zip"/>
   </patternset>
 
-  <patternset id="OntosOFA.library">
-    <include name="OntosOFA${file.separator}*.jar"/>
-    <include name="OntosOFA${file.separator}*.zip"/>
-  </patternset>
-
-    <patternset id="_OntosOFA.library">
-      <include name="_OntosOFA${file.separator}*.jar"/>
-      <include name="_OntosOFA${file.separator}*.zip"/>
-    </patternset>
-
     <patternset id="jakarta-commons.library">
       <include name="jakarta-commons${file.separator}*.jar"/>
       <include name="jakarta-commons${file.separator}*.zip"/>
@@ -117,20 +97,6 @@
       <include name="jwpl${file.separator}*.jar"/>
       <include name="jwpl${file.separator}*.zip"/>
     </patternset>
-
-    <patternset id="rsyntaxtextarea.library">
-      <include name="rsyntaxtextarea${file.separator}*.jar"/>
-      <include name="rsyntaxtextarea${file.separator}*.zip"/>
-    </patternset>
-
-  <patternset id="OntosUtil.library">
-    <include name="OntosUtil${file.separator}*.zip"/>
-    <include name="OntosUtil${file.separator}*.jar"/>
-  </patternset>
-
-  <patternset id="Jape4.library">
-    <include name="Jape4${file.separator}*.jar"/>
-  </patternset>
 
   <patternset id="jflex.library">
     <include name="jflex-1.4.2${file.separator}*.jar"/>
@@ -154,6 +120,10 @@
 
   <patternset id="russian.domain">
     <include name="Russian${file.separator}**${file.separator}*"/>
+  </patternset>
+
+  <patternset id="prosody.domain">
+    <include name="Russian.Prosody${file.separator}**${file.separator}*"/>
   </patternset>
 
   <patternset id="runtime.context">

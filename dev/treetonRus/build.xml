@@ -1,8 +1,4 @@
 <?xml version="1.0" encoding="windows-1251"?>
-<!--
-  ~ Copyright Anatoly Starostin (c) 2017.
-  -->
-
 <project name="treetonRus.project" default="help">
     <import file="buildInfo.xml"/>
 
@@ -16,9 +12,7 @@
         </copy>
     </target>
 
-    <target name="treetonRus.build"
-            depends="treetonRus.compile,treetonRus.copylibs,treetonCore.build,treetonGui.build,lingvTools.build,lingvToolsRu.build"
-            description="Create distribution kit">
+    <target name="treetonRus.build" depends="treetonRus.compile,treetonRus.copylibs,treetonCore.build,treetonGui.build,lingvTools.build,lingvToolsRu.build" description="Create distribution kit">
         <pathconvert property="treetonRus.newclasspath" pathsep=" ">
             <path refid="treetonRus.build.classpath"/>
             <map from="${project.distrib.dir}${file.separator}" to=""/>
@@ -42,7 +36,7 @@
         <pathconvert property="treetonRus.newclasspath_fortests" pathsep=" ">
             <path refid="treetonRus.build.classpath"/>
             <path>
-                <pathelement location="${treetonRus.distrib.jar}"/>
+               <pathelement location="${treetonRus.distrib.jar}"/>
             </path>
             <map from="${project.distrib.dir}${file.separator}" to="..${file.separator}"/>
         </pathconvert>
@@ -88,15 +82,11 @@
         <antcall target="treetonRus.distribTarget"/>
     </target>
 
-    <target name="treetonRus.compile"
-            depends="treetonCore.compile,treetonGui.compile,lingvTools.compile,lingvToolsRu.compile,treetonRus.setSourceDir"
-            description="Compile module ${treetonRus.module.name}; production classes">
+    <target name="treetonRus.compile" depends="treetonCore.compile,treetonGui.compile,lingvTools.compile,lingvToolsRu.compile,treetonRus.setSourceDir" description="Compile module ${treetonRus.module.name}; production classes">
         <mkdir dir="${treetonRus.module.outputdir}"/>
 
-        <javac destdir="${treetonRus.module.outputdir}" debug="${compiler.debug}"
-               nowarn="${compiler.generate.no.warnings}" encoding="${compiler.encoding}"
-               memoryMaximumSize="${compiler.max.memory}" fork="true"
-               srcdir="${treetonRus.module.basedir}${file.separator}src" excludes="${treetonRus.excludeFromCompile}">
+        <javac destdir="${treetonRus.module.outputdir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" encoding="${compiler.encoding}"
+               memoryMaximumSize="${compiler.max.memory}" fork="true" srcdir="${treetonRus.module.basedir}${file.separator}src" excludes="${treetonRus.excludeFromCompile}">
             <compilerarg line="${compiler.args}"/>
             <classpath refid="treetonRus.classpath"/>
         </javac>
@@ -107,15 +97,15 @@
             </fileset>
         </copy>
 
-        <for list="${treetonRus.sourcedirs}" param="cur">
-            <sequential>
-                <copy todir="${treetonRus.module.outputdir}">
-                    <fileset dir="${treetonRus.module.basedir}${file.separator}@{cur}">
-                        <include name="**${file.separator}*"/>
-                        <exclude name="**${file.separator}*.java"/>
-                    </fileset>
-                </copy>
-            </sequential>
+       <for list="${treetonRus.sourcedirs}" param="cur">
+          <sequential>
+            <copy todir="${treetonRus.module.outputdir}">
+              <fileset dir="${treetonRus.module.basedir}${file.separator}@{cur}">
+                  <include name="**${file.separator}*"/>
+                  <exclude name="**${file.separator}*.java"/>
+              </fileset>
+            </copy>
+          </sequential>
         </for>
     </target>
 
@@ -127,12 +117,9 @@
         </filepath>
     </available>
 
-    <target name="treetonRus.compile.tests"
-            depends="treetonRus.compile,treetonCore.compile.tests,treetonGui.compile.tests,lingvTools.compile.tests,lingvToolsRu.compile.tests"
-            description="compile module ${treetonRus.module.name}; test classes" if="treetonRus.testsLocated">
+    <target name="treetonRus.compile.tests" depends="treetonRus.compile,treetonCore.compile.tests,treetonGui.compile.tests,lingvTools.compile.tests,lingvToolsRu.compile.tests" description="compile module ${treetonRus.module.name}; test classes" if="treetonRus.testsLocated">
         <mkdir dir="${treetonRus.module.testoutputdir}"/>
-        <javac destdir="${treetonRus.module.testoutputdir}" debug="${compiler.debug}"
-               nowarn="${compiler.generate.no.warnings}" encoding="${compiler.encoding}"
+        <javac destdir="${treetonRus.module.testoutputdir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" encoding="${compiler.encoding}"
                memoryMaximumSize="${compiler.max.memory}" fork="true" excludes="${treetonRus.excludeTestsFromCompile}">
             <compilerarg line="${compiler.args}"/>
             <classpath refid="treetonRus.classpath"/>
@@ -162,17 +149,15 @@
         </for>
     </target>
 
-    <target name="treetonRus.run-tests" description="junit tests" depends="treetonRus.compile.tests"
-            if="treetonRus.testsLocated" unless="treetonRus.disableTests">
+    <target name="treetonRus.run-tests" description="junit tests" depends="treetonRus.compile.tests" if="treetonRus.testsLocated" unless="treetonRus.disableTests">
         <delete dir="${treetonRus.module.reportsdir}"/>
         <mkdir dir="${treetonRus.module.reportsdir}${file.separator}raw${file.separator}"/>
         <mkdir dir="${treetonRus.module.reportsdir}${file.separator}run${file.separator}"/>
 
         <for pathref="treetonRus.testclasspath" param="cur">
             <sequential>
-                <junit printsummary="withOutAndErr"
-                       dir="${treetonRus.module.reportsdir}${file.separator}run${file.separator}">
-                    <syspropertyset refid="treetonRus.testProperties"/>
+                <junit printsummary="withOutAndErr" dir="${treetonRus.module.reportsdir}${file.separator}run${file.separator}">
+		    <syspropertyset refid="treetonRus.testProperties"/>
 
                     <classpath>
                         <path refid="treetonRus.classpath"/>
@@ -180,10 +165,8 @@
                         <pathelement location="${treetonRus.module.outputdir}"/>
                         <pathelement location="${treetonRus.module.testoutputdir}"/>
                     </classpath>
-
-                    <batchtest fork="yes" filtertrace="yes"
-                               todir="${treetonRus.module.reportsdir}${file.separator}raw${file.separator}"
-                               if="treetonRus.transitiveTests">
+        
+                    <batchtest fork="yes" filtertrace="yes" todir="${treetonRus.module.reportsdir}${file.separator}raw${file.separator}" if="treetonRus.transitiveTests">
                         <formatter type="xml"/>
                         <fileset dir="@{cur}" includes="**${file.separator}*TestCase.class"/>
                     </batchtest>
@@ -192,25 +175,23 @@
         </for>
 
         <junit printsummary="withOutAndErr" dir="${treetonRus.module.reportsdir}${file.separator}run${file.separator}">
-            <syspropertyset refid="treetonRus.testProperties"/>
+	    <syspropertyset refid="treetonRus.testProperties"/>
 
             <classpath>
-                <path refid="treetonRus.classpath"/>
-                <path refid="treetonRus.testclasspath"/>
-                <pathelement location="${treetonRus.module.outputdir}"/>
-                <pathelement location="${treetonRus.module.testoutputdir}"/>
+               <path refid="treetonRus.classpath"/>
+               <path refid="treetonRus.testclasspath"/>
+               <pathelement location="${treetonRus.module.outputdir}"/>
+               <pathelement location="${treetonRus.module.testoutputdir}"/>
             </classpath>
-
-            <batchtest fork="yes" filtertrace="yes"
-                       todir="${treetonRus.module.reportsdir}${file.separator}raw${file.separator}">
+        
+            <batchtest fork="yes" filtertrace="yes" todir="${treetonRus.module.reportsdir}${file.separator}raw${file.separator}">
                 <formatter type="xml"/>
                 <fileset dir="${treetonRus.module.testoutputdir}" includes="**${file.separator}*TestCase.class"/>
             </batchtest>
         </junit>
     </target>
 
-    <target name="treetonRus.test" depends="treetonRus.run-tests" if="treetonRus.testsLocated"
-            unless="treetonRus.disableTests">
+    <target name ="treetonRus.test" depends="treetonRus.run-tests" if="treetonRus.testsLocated" unless="treetonRus.disableTests">
         <junitreport todir="${treetonRus.module.reportsdir}">
             <fileset dir="${treetonRus.module.reportsdir}${file.separator}raw${file.separator}">
                 <include name="TEST-*.xml"/>
@@ -239,7 +220,7 @@
         <echo message=""/>
         <echo message="   build             - builds the module"/>
         <echo message="   clean             - cleans the module, removes all generated files"/>
-        <echo message="   test              - runs tests and generates reports"/>
+        <echo message="   test              - runs tests and generates reports" />
         <echo message=""/>
         <echo message="==============================================================================="/>
     </target>

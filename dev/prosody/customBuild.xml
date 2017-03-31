@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<project name="prosody.custom.info" default="nothing">
+    <dirname property="project.basedir" file="${ant.file}${file.separator}..${file.separator}.."/>
+    <import file="../../common.xml"/>
+
+    <patternset id="prosody.libraries">
+        <patternset refid="jwpl.library"/>
+        <patternset refid="java_cup.library"/>
+        <patternset refid="gnuGetOpt.library"/>
+
+        <!-- include name=" Here you can specify the list of module libraries. Just remove this string and do it."/-->
+        <!--
+          Example:
+
+          <patternset refid="lib1.library"/>
+          <patternset refid="lib2.library"/>
+        -->
+    </patternset>
+
+    <!-- list of dependencies
+      Example:
+
+      <property name="prosody.deps" value="module1,module2"/>
+    -->
+
+    <!-- ,dictionaryAnalyzerGui -->
+    <property name="prosody.deps" value="treetonGui,treetonCore,treetonRus"/>
+
+    <!-- Main class definition
+      Example:
+
+      <property name="prosody.mainclass" value="com.Starter"/>
+    -->
+    <property name="prosody.mainclass" value="treeton.gui.ProsodyStarter"/>
+    
+    <!-- Here you can specify files you want to exclude from the compilation. It is possible to use wildcard patterns.
+      Example:
+
+      <property name="prosody.excludeFromCompile" value="com/myClass.java, com/myPackage/**"/>
+    -->
+
+    <property name="prosody.excludeFromCompile" value="treeton/gui/old/**"/>
+
+    <!-- Here you can specify files you want to exclude from the compilation of test sources. It is possible to use wildcard patterns.
+      Example:
+
+      <property name="prosody.excludeFromCompile" value="com/myTestCase.java, com/myTestPackage/**"/>
+    -->
+
+    <property name="prosody.excludeTestsFromCompile" value=""/>
+
+    <!-- distribTarget executes before build target. It can be used for
+    copying some necessary files to the distribution kit.
+
+    Example:
+    <target name="prosody.distribTarget"/>
+      <mkdir dir="${project.distrib.conf.dir}"/>
+
+      <copy todir="${project.distrib.conf.dir}">
+        <fileset dir="${project.runtime.conf.dir}">
+          <include name="config.xml"/>
+        </fileset>
+      </copy>
+    </target>
+    -->
+
+  <target name="prosody.distribTarget">
+    <mkdir dir="${project.distrib.domains.dir}"/>
+
+    <copy todir="${project.distrib.domains.dir}">
+      <fileset dir="${project.runtime.domains.dir}">
+        <patternset refid="prosody.domain"/>
+      </fileset>
+    </copy>
+    <copy todir="${project.distrib.dir}">
+      <fileset dir="${project.runtime.dir}">
+        <include name="verseProcessing.properties"/>
+        <include name="lyricsExample.txt"/>
+        <include name="verseProcessingTool.bat"/>
+      </fileset>
+    </copy>
+  </target>
+
+
+    <!-- using following property set you can specify some properties that must passed to the junit -->
+
+    <propertyset id="prosody.testProperties"/>
+
+    <!-- you can uncomment following line to disable running of the tests in this module-->
+
+    <!--
+        <property name="prosody.disableTests" value="true"/>
+    -->
+
+    <!-- you can uncomment following line to make the system run tests from the module's descendants-->
+
+    <!--
+        <property name="prosody.transitiveTests" value="true"/>
+    -->
+
+    <target name="nothing"/>
+</project>

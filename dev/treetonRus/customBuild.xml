@@ -8,7 +8,6 @@
     <import file="../../common.xml"/>
 
     <patternset id="treetonRus.libraries">
-        <patternset refid="morph.library"/>
     </patternset>
 
     <property name="treetonRus.deps" value="treetonCore,treetonGui,lingvTools,lingvToolsRu"/>

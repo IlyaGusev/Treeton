@@ -8,7 +8,6 @@
     <import file="../../common.xml"/>
 
     <patternset id="lingvTools.libraries">
-        <patternset refid="gate.library"/>
         <patternset refid="javatools.library"/>
     </patternset>
 
