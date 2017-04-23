@@ -39,10 +39,11 @@ public class VerseProcessingTool {
     }
     
     private static ArrayList<VerseDescription> getVerseDescriptions( File inputFile, boolean parseFormattedLyrics, VerseProcessor processor, 
-                                                                     ArrayList<Integer> sourceLineNumbers, ArrayList<String> plainLyrics, HashSet<String> tags ) throws IOException {
+                                                                     ArrayList<Integer> sourceLineNumbers, ArrayList<String> plainLyrics, 
+                                                                     HashSet<String> tags, boolean noHeader ) throws IOException {
         ArrayList<String> formattedLyrics = new ArrayList<>();
 
-        parseFile(inputFile, formattedLyrics, sourceLineNumbers, tags);
+        parseFile(inputFile, formattedLyrics, sourceLineNumbers, tags, noHeader);
 
         ArrayList<StressDescription> stressDescriptions = new ArrayList<>();
 
@@ -128,6 +129,8 @@ public class VerseProcessingTool {
             toProcess.add(lyricsFile);
         }
 
+        boolean noHeader = Boolean.valueOf(props.getProperty("noHeader"));
+
         int counter = 0;
         for (File inputFile : toProcess) {
             System.out.println(counter++ + ": processing " + inputFile.getPath());
@@ -137,7 +140,7 @@ public class VerseProcessingTool {
             ArrayList<String> plainLyrics = new ArrayList<>();
 
             ArrayList<VerseDescription> verseDescriptions = 
-                    getVerseDescriptions( inputFile, parseFormattedLyrics, processor, sourceLineNumbers, plainLyrics, tags );
+                    getVerseDescriptions( inputFile, parseFormattedLyrics, processor, sourceLineNumbers, plainLyrics, tags, noHeader );
             
             if( verseDescriptions == null ) {
                 continue;
@@ -278,9 +281,10 @@ public class VerseProcessingTool {
         return firstLineIndex;
     }
 
-    private static void parseFile(File inputFile, ArrayList<String> formattedLyrics, ArrayList<Integer> sourceLineNumbers, HashSet<String> tags) throws IOException {
+    private static void parseFile(File inputFile, ArrayList<String> formattedLyrics, ArrayList<Integer> sourceLineNumbers,
+                                  HashSet<String> tags, boolean noHeader ) throws IOException {
         BufferedReader reader = new BufferedReader(new FileReader(inputFile));
-        boolean headerFinished = false;
+        boolean headerFinished = noHeader;
 
         int nLine = 0;
         while(reader.ready()) {
@@ -398,6 +402,7 @@ public class VerseProcessingTool {
         }
 
         Map<ObjectPair<File,File>,PreciseVerseDistanceCounter.DistanceWithShift> results = new HashMap<>();
+        boolean noHeader = Boolean.valueOf(props.getProperty("noHeader"));
 
         for (File queryFile : pairsMap.keySet()) {
             System.out.println( "processing " + queryFile.getPath());
@@ -406,7 +411,7 @@ public class VerseProcessingTool {
             ArrayList<String> queryPlainLyrics = new ArrayList<>();
 
             ArrayList<VerseDescription> queryVerseDescriptions =
-                    getVerseDescriptions( queryFile, parseFormattedLyrics, processor, null, queryPlainLyrics, queryTags );
+                    getVerseDescriptions( queryFile, parseFormattedLyrics, processor, null, queryPlainLyrics, queryTags, noHeader );
 
             if( queryVerseDescriptions == null ) {
                 continue;
@@ -422,7 +427,7 @@ public class VerseProcessingTool {
                 ArrayList<String> responsePlainLyrics = new ArrayList<>();
 
                 ArrayList<VerseDescription> responseVerseDescriptions =
-                        getVerseDescriptions( responseFile, parseFormattedLyrics, processor, null, responsePlainLyrics, responseTags );
+                        getVerseDescriptions( responseFile, parseFormattedLyrics, processor, null, responsePlainLyrics, responseTags, noHeader );
 
                 if( responseVerseDescriptions == null ) {
                     continue;

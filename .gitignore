@@ -3,3 +3,4 @@ classes
 distrib
 # Compiled class file
 *.class
+runtime/raw_data
