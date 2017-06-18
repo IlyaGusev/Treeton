@@ -853,34 +853,40 @@ public class VerseProcessor {
         return sb.toString();
     }
 
-    public PreciseVerseDistanceCounter createVerseDistanceCounter(ArrayList<VerseDescription> verseDescriptions, int firstLineIndex) {
-        PreciseVerseDistanceCounter result = new PreciseVerseDistanceCounter(verseDescriptions, countAverage(verseDescriptions,firstLineIndex), firstLineIndex, averageFootnessMode, meterMult, footnessMult);
-        if( !averageFootnessMode ) {
-            int[] dimensionPriorities = new int[metricVectorDimension];
-            boolean[] multOrDeltaForDimensions = new boolean[metricVectorDimension];
+    public PreciseVerseDistanceCounter createVerseDistanceCounter(ArrayList<VerseDescription> verseDescriptions,
+                                                                  int firstLineIndex)
+    {
 
-            Collection<Meter> meters = probsCounter.getMeters();
-            ArrayList<Meter> metersArray = new ArrayList<>( meters );
+        int[] dimensionPriorities = new int[metricVectorDimension];
+        PreciseVerseDistanceCounter.DimensionOperation[] dimensionOperations =
+                new PreciseVerseDistanceCounter.DimensionOperation[metricVectorDimension];
+        Collection<Meter> meters = probsCounter.getMeters();
+        ArrayList<Meter> metersArray = new ArrayList<>( meters );
 
-            for (Meter meter : metersArray) {
-                Integer offset = meterInsideVectorOrder.get(meter.getName());
-                for (int j = 0; j < spacePerMeter; j++) {
-                    int priority = meter.getPriority();
-                    assert priority >= 0;
-                    dimensionPriorities[offset+j]= priority;
-                    multOrDeltaForDimensions[offset+j]=true;
-                }
+        // Все измерения, кроме 3 последних - типы метра: ямб, хорей и т.д.
+        // Их "вероятности" между строчками мы будем потом перемножать.
+        // В зависимости от приоритета потом им будут проставлены разные веса.
+        for( Meter meter : metersArray ) {
+            Integer offset = meterInsideVectorOrder.get( meter.getName() );
+            for (int j = 0; j < spacePerMeter; j++) {
+                int priority = meter.getPriority();
+                assert priority >= 0;
+                dimensionPriorities[offset+j] = priority;
+                dimensionOperations[offset+j] = PreciseVerseDistanceCounter.DimensionOperation.Multiplication;
             }
-
-            dimensionPriorities[metricVectorDimension-3]=probsCounter.getMaxMeterPriority()+1;
-            dimensionPriorities[metricVectorDimension-2]=probsCounter.getMaxMeterPriority()+1;
-            dimensionPriorities[metricVectorDimension-1]=probsCounter.getMaxMeterPriority()+1;
-            multOrDeltaForDimensions[metricVectorDimension-3]=false;
-            multOrDeltaForDimensions[metricVectorDimension-2]=false;
-            multOrDeltaForDimensions[metricVectorDimension-1]=false;
-
-            result.setDimensionInfo(probsCounter.getMaxMeterPriority()+2,dimensionPriorities,multOrDeltaForDimensions);
         }
-        return result;
+
+        // Последние 3 измерения - тип рифмы, у них отличается способ сложения.
+        dimensionPriorities[metricVectorDimension-3] = probsCounter.getMaxMeterPriority() + 1;
+        dimensionPriorities[metricVectorDimension-2] = probsCounter.getMaxMeterPriority() + 1;
+        dimensionPriorities[metricVectorDimension-1] = probsCounter.getMaxMeterPriority() + 1;
+        dimensionOperations[metricVectorDimension-3] = PreciseVerseDistanceCounter.DimensionOperation.Delta;
+        dimensionOperations[metricVectorDimension-2] = PreciseVerseDistanceCounter.DimensionOperation.Delta;
+        dimensionOperations[metricVectorDimension-1] = PreciseVerseDistanceCounter.DimensionOperation.Delta;
+
+        return new PreciseVerseDistanceCounter( verseDescriptions,
+                countAverage(verseDescriptions, firstLineIndex), firstLineIndex,
+                probsCounter.getMaxMeterPriority()+2, dimensionPriorities,
+                dimensionOperations );
     }
 }
