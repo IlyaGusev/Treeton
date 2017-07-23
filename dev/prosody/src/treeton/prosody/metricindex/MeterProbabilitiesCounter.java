@@ -242,6 +242,7 @@ public class MeterProbabilitiesCounter {
     public static String MASCULINE_CADENCE = "__Masculine_Cadence";
     public static String FEMININE_CADENCE = "__Feminine_Cadence";
     public static String DACTYLIC_CADENCE = "__Dactylic_Cadence";
+    public static String[] Cadences = new String[] {MASCULINE_CADENCE, FEMININE_CADENCE, DACTYLIC_CADENCE};
     public static int NUMBER_OF_CADENCES_TYPES = 3;
 
     public void countMeterProbabilities(TreenotationStorageImpl storage, Map<String, List<double[]>> meterProbabilities,

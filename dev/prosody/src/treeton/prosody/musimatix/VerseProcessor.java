@@ -450,6 +450,17 @@ public class VerseProcessor {
                             metricVector.set(place + spacePerMeter - 1, tail / nonNullCount);
                         }
                     }
+
+                    for( int i = 0; i < MeterProbabilitiesCounter.NUMBER_OF_CADENCES_TYPES; i++) {
+                        List<double[]> probabilities = meterProbabilities.get(MeterProbabilitiesCounter.Cadences[i]);
+
+                        double[] probabilitiesForAllVerses = probabilities.get(0);
+                        double p = (probabilitiesForAllVerses == null || verseIndex >= probabilitiesForAllVerses.length) ? 0.0 :
+                                probabilitiesForAllVerses[verseIndex];
+
+                        metricVector.set(metricVectorDimension - 3 + i, p);
+                    }
+
                 }
 
                 result.add(new VerseDescription(metricVector, verseProcessingUtilities.generateSyllableInfo(storage, forceStressed, forceUnstressed, verseTrn), fragmentIds == null ? -1 : fragmentIds.get(verseIndex)));
