@@ -5,9 +5,7 @@
     <content url="file://$MODULE_DIR$">
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
     </content>
-    <content url="file://$MODULE_DIR$/../../runtime">
-      <sourceFolder url="file://$MODULE_DIR$/../../runtime/domains/Russian/resources/morph" isTestSource="false" />
-    </content>
+    <content url="file://$MODULE_DIR$/../../runtime" />
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="treetonGui" exported="" />
@@ -16,5 +14,9 @@
     <orderEntry type="library" exported="" name="jwpl" level="project" />
     <orderEntry type="library" exported="" name="GnuGetOpt" level="project" />
     <orderEntry type="library" exported="" name="java_cup_v10k" level="project" />
+    <orderEntry type="module" module-name="lingvToolsRu" />
+    <orderEntry type="module" module-name="lingvTools" />
+    <orderEntry type="module" module-name="treetonCore" />
+    <orderEntry type="module" module-name="treetonGui" />
   </component>
 </module>

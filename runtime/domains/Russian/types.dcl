@@ -2063,3 +2063,372 @@ type EtapMorph {
     }
     hierarchy standard {}
 }
+
+type UD_Gramm {
+    introduction {
+        feature POS {
+            viewname {}
+            description {}
+            value ADJ {
+                viewname {}
+                description {}
+            }
+            value ADP {
+                viewname {}
+                description {}
+            }
+            value ADV {
+                viewname {}
+                description {}
+            }
+            value AUX {
+                viewname {}
+                description {}
+            }
+            value CCONJ {
+                viewname {}
+                description {}
+            }
+            value DET {
+                viewname {}
+                description {}
+            }
+            value INTJ {
+                viewname {}
+                description {}
+            }
+            value NOUN {
+                viewname {}
+                description {}
+            }
+            value NUM {
+                viewname {}
+                description {}
+            }
+            value PART {
+                viewname {}
+                description {}
+            }
+            value PRON {
+                viewname {}
+                description {}
+            }
+            value PROPN {
+                viewname {}
+                description {}
+            }
+            value SCONJ {
+                viewname {}
+                description {}
+            }
+            value VERB {
+                viewname {}
+                description {}
+            }
+        }
+
+        feature Animacy {
+            viewname {}
+            description {}
+            value Anim {
+                viewname {}
+                description {}
+            }
+            value Inan {
+                viewname {}
+                description {}
+            }
+	}
+
+        feature Aspect {
+            viewname {}
+            description {}
+            value Imp {
+                viewname {}
+                description {}
+            }
+            value Perf {
+                viewname {}
+                description {}
+            }
+	}
+
+        feature Case {
+            viewname {}
+            description {}
+            value Nom {
+                viewname {}
+                description {}
+            }
+            value Acc {
+                viewname {}
+                description {}
+            }
+            value Dat {
+                viewname {}
+                description {}
+            }
+            value Gen {
+                viewname {}
+                description {}
+            }
+            value Ins {
+                viewname {}
+                description {}
+            }
+            value Loc {
+                viewname {}
+                description {}
+            }
+            value Par {
+                viewname {}
+                description {}
+            }
+            value Voc {
+                viewname {}
+                description {}
+            }
+	}
+
+        feature Degree {
+            viewname {}
+            description {}
+            value Cmp {
+                viewname {}
+                description {}
+            }
+            value Pos {
+                viewname {}
+                description {}
+            }
+            value Sup {
+                viewname {}
+                description {}
+            }
+	}
+
+        feature Gender {
+            viewname {}
+            description {}
+            value Fem {
+                viewname {}
+                description {}
+            }
+            value Masc {
+                viewname {}
+                description {}
+            }
+            value Neut {
+                viewname {}
+                description {}
+            }
+	}
+
+        feature Mood {
+            viewname {}
+            description {}
+            value Cnd {
+                viewname {}
+                description {}
+            }
+            value Imp {
+                viewname {}
+                description {}
+            }
+            value Ind {
+                viewname {}
+                description {}
+            }
+	}
+
+        feature Number {
+            viewname {}
+            description {}
+            value Plur {
+                viewname {}
+                description {}
+            }
+            value Sing {
+                viewname {}
+                description {}
+            }
+	}
+
+        feature Person {
+            viewname {}
+            description {}
+            value 1 {
+                viewname {}
+                description {}
+            }
+            value 2 {
+                viewname {}
+                description {}
+            }
+            value 3 {
+                viewname {}
+                description {}
+            }
+	}
+
+        feature Polarity {
+            viewname {}
+            description {}
+            value Neg {
+                viewname {}
+                description {}
+            }
+	}
+
+        feature Tense {
+            viewname {}
+            description {}
+            value Fut {
+                viewname {}
+                description {}
+            }
+            value Past {
+                viewname {}
+                description {}
+            }
+            value Pres {
+                viewname {}
+                description {}
+            }
+	}
+
+        feature VerbForm {
+            viewname {}
+            description {}
+            value Conv {
+                viewname {}
+                description {}
+            }
+            value Fin {
+                viewname {}
+                description {}
+            }
+            value Inf {
+                viewname {}
+                description {}
+            }
+            value Part {
+                viewname {}
+                description {}
+            }
+	}
+
+        feature Voice {
+            viewname {}
+            description {}
+            value Act {
+                viewname {}
+                description {}
+            }
+            value Mid {
+                viewname {}
+                description {}
+            }
+            value Pass {
+                viewname {}
+                description {}
+            }
+	}
+
+        feature Variant {
+            viewname {}
+            description {}
+            value Short {
+                viewname {}
+                description {}
+            }
+	}
+
+	feature additional {
+            viewname {}
+            description {}
+            value PAR {
+                viewname {
+			<(._часто без удар _. )?вводн.*>
+		}
+                description {}
+            }
+            value INVAR {
+                viewname {
+			несклоняемое
+		}
+                description {}
+            }
+            value PLT {
+                viewname {
+			pluralia tantum
+		}
+                description {}
+            }
+            value PRN {
+                viewname {
+			местоименность
+		}
+                description {}
+            }
+            value ADJI {
+                viewname {
+			адъективное склонение существительных (типа "операционная")
+		}
+                description {}
+            }
+            value MF {
+                viewname {
+			мужско-женские слова (типа "балда")
+		}
+                description {}
+            }
+            value PF_IPF {
+                viewname {
+			смешанный вид (типа "блокировать")
+		}
+                description {}
+            }
+            value ORDIN {
+                viewname {
+			для порядковых числительных
+		}
+                description {}
+            }
+	}
+
+	feature TRANS {
+            viewname {}
+            description {}
+            value vt {
+                viewname {}
+                description {}
+            }
+            value vi {
+                viewname {}
+                description {}
+            }
+	}
+	
+	feature additional_infl {
+            viewname {}
+            description {}
+            value Loc2 {
+                viewname {
+			Второй предложный
+		}
+                description {}
+            }
+        }
+
+	feature status {
+            viewname {}
+            description {}
+            value unsure {
+                viewname {}
+                description {}
+            }
+	}
+    }
+    hierarchy standard {}
+}

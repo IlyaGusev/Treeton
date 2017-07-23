@@ -18,5 +18,9 @@
         <SOURCES />
       </library>
     </orderEntry>
+    <orderEntry type="module" module-name="scape" />
+    <orderEntry type="module" module-name="prosody" />
+    <orderEntry type="module" module-name="treetonCore" />
+    <orderEntry type="module" module-name="treetonGui" />
   </component>
 </module>
