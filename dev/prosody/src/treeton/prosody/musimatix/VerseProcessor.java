@@ -653,6 +653,45 @@ public class VerseProcessor {
         }
     }
 
+    void parseRawSyllables(ArrayList<String> rawSyllableStrings, ArrayList<String> plainOutput, ArrayList<StressDescription> stressDescriptions) throws Exception {
+        for (String syllableString : rawSyllableStrings) {
+            int bracketIndex = syllableString.indexOf('(');
+            if(bracketIndex >= 0) {
+                syllableString = syllableString.substring(0, bracketIndex);
+            }
+            String[] syllables = syllableString.split(";");
+
+            ArrayList<SyllableInfo> syllInfos = new ArrayList<>();
+            StringBuilder buf = new StringBuilder();
+            int prevEnd = -1;
+            for (String syllable : syllables) {
+                if(syllable.isEmpty()) {
+                    continue;
+                }
+
+                String[] syllDescr = syllable.split(",");
+
+                int shift = Integer.valueOf(syllDescr[0]);
+                int length = Integer.valueOf(syllDescr[1]);
+                boolean stressed = syllDescr[2].equals("S");
+
+                if(prevEnd >= 0 && prevEnd != shift) {
+                    buf.append(' ');
+                }
+
+                prevEnd = shift + length;
+
+                syllInfos.add(new SyllableInfo(buf.length(),2,
+                        stressed ? SyllableInfo.StressStatus.STRESSED : SyllableInfo.StressStatus.UNSTRESSED));
+
+                buf.append("ла");
+            }
+
+            plainOutput.add(buf.toString());
+            stressDescriptions.add(new StressDescription(syllInfos));
+        }
+    }
+
     public Vector<Double> countAverage(ArrayList<VerseDescription> verseDescriptions, int firstLineIndex) {
         Vector<Double> averageVector = new Vector<>();
         averageVector.setSize(metricVectorDimension);

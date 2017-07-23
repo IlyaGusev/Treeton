@@ -16,7 +16,7 @@ import java.io.*;
 import java.util.*;
 
 public class VerseProcessingTool {
-    static void printUsage() {
+    private static void printUsage() {
         System.out.println("Usage: 'VerseProcessingTool algorithmPropertiesFile lyricsFile'");
         System.out.println("or 'VerseProcessingTool --distance algorithmPropertiesFile queryLyricsFile1 responseLyricsFile2'");
         System.out.println("or 'VerseProcessingTool --distance algorithmPropertiesFile fileWithPairs'");
@@ -38,16 +38,23 @@ public class VerseProcessingTool {
         return processor;
     }
     
-    private static ArrayList<VerseDescription> getVerseDescriptions( File inputFile, boolean parseFormattedLyrics, VerseProcessor processor, 
-                                                                     ArrayList<Integer> sourceLineNumbers, ArrayList<String> plainLyrics, 
-                                                                     HashSet<String> tags, boolean noHeader ) throws IOException {
+    private static ArrayList<VerseDescription> getVerseDescriptions(File inputFile, InputFormat inputFormat, VerseProcessor processor,
+                                                                    ArrayList<Integer> sourceLineNumbers, ArrayList<String> plainLyrics,
+                                                                    HashSet<String> tags, boolean noHeader ) throws IOException {
         ArrayList<String> formattedLyrics = new ArrayList<>();
 
         parseFile(inputFile, formattedLyrics, sourceLineNumbers, tags, noHeader);
 
         ArrayList<StressDescription> stressDescriptions = new ArrayList<>();
 
-        if( parseFormattedLyrics ) {
+        if( inputFormat == InputFormat.RAW_SYLLABLES ) {
+            try {
+                processor.parseRawSyllables(formattedLyrics, plainLyrics, stressDescriptions);
+            } catch (Exception e) {
+                System.err.println("Unable to parse raw syllables (file "+inputFile.getPath()+"): " + e.getMessage());
+                return null;
+            }
+        } else if( inputFormat == InputFormat.FORMATTED ) {
             try {
                 processor.parseFormattedVerses(formattedLyrics, plainLyrics, stressDescriptions);
             } catch (Exception e) {
@@ -55,6 +62,7 @@ public class VerseProcessingTool {
                 return null;
             }
         } else {
+            assert inputFormat == InputFormat.STANDARD;
             plainLyrics.addAll( formattedLyrics );
             stressDescriptions = null;
         }
@@ -64,6 +72,12 @@ public class VerseProcessingTool {
         assert verseDescriptions.size() == plainLyrics.size();
 
         return verseDescriptions;
+    }
+
+    enum InputFormat {
+        STANDARD,
+        FORMATTED,
+        RAW_SYLLABLES
     }
 
     public static void main(String[] argv) throws Exception {
@@ -106,7 +120,7 @@ public class VerseProcessingTool {
         propsStream.close();
 
         boolean compactOutput = Boolean.valueOf(props.getProperty("compactOutput"));
-        boolean parseFormattedLyrics = Boolean.valueOf(props.getProperty("parseFormattedLyrics"));
+        InputFormat inputFormat = InputFormat.valueOf(props.getProperty("inputFormat"));
 
         HashSet<String> tagsWhereToSkipHeader = getTagsWhereToSkipHeader(props);
 
@@ -140,7 +154,7 @@ public class VerseProcessingTool {
             ArrayList<String> plainLyrics = new ArrayList<>();
 
             ArrayList<VerseDescription> verseDescriptions = 
-                    getVerseDescriptions( inputFile, parseFormattedLyrics, processor, sourceLineNumbers, plainLyrics, tags, noHeader );
+                    getVerseDescriptions( inputFile, inputFormat, processor, sourceLineNumbers, plainLyrics, tags, noHeader );
             
             if( verseDescriptions == null ) {
                 continue;
@@ -374,7 +388,7 @@ public class VerseProcessingTool {
         props.load(propsStream);
         propsStream.close();
 
-        boolean parseFormattedLyrics = Boolean.valueOf(props.getProperty("parseFormattedLyrics"));
+        InputFormat inputFormat = InputFormat.valueOf(props.getProperty("parseFormattedLyrics"));
         HashSet<String> tagsWhereToSkipHeader = getTagsWhereToSkipHeader(props);
 
         VerseProcessor processor;
@@ -411,7 +425,7 @@ public class VerseProcessingTool {
             ArrayList<String> queryPlainLyrics = new ArrayList<>();
 
             ArrayList<VerseDescription> queryVerseDescriptions =
-                    getVerseDescriptions( queryFile, parseFormattedLyrics, processor, null, queryPlainLyrics, queryTags, noHeader );
+                    getVerseDescriptions( queryFile, inputFormat, processor, null, queryPlainLyrics, queryTags, noHeader );
 
             if( queryVerseDescriptions == null ) {
                 continue;
@@ -427,7 +441,7 @@ public class VerseProcessingTool {
                 ArrayList<String> responsePlainLyrics = new ArrayList<>();
 
                 ArrayList<VerseDescription> responseVerseDescriptions =
-                        getVerseDescriptions( responseFile, parseFormattedLyrics, processor, null, responsePlainLyrics, responseTags, noHeader );
+                        getVerseDescriptions( responseFile, inputFormat, processor, null, responsePlainLyrics, responseTags, noHeader );
 
                 if( responseVerseDescriptions == null ) {
                     continue;
