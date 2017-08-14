@@ -388,7 +388,7 @@ public class VerseProcessingTool {
         props.load(propsStream);
         propsStream.close();
 
-        InputFormat inputFormat = InputFormat.valueOf(props.getProperty("parseFormattedLyrics"));
+        InputFormat inputFormat = InputFormat.valueOf(props.getProperty("inputFormat"));
         HashSet<String> tagsWhereToSkipHeader = getTagsWhereToSkipHeader(props);
 
         VerseProcessor processor;
