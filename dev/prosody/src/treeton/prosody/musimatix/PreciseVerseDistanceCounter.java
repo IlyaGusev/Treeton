@@ -33,12 +33,11 @@ public class PreciseVerseDistanceCounter {
         for( int i = 0; i < regressionCoef.length; i++ ) {
             regressionCoef[i] = 0.0;
         }
-
-        regressionCoef[0] = -0.44102627;
-        regressionCoef[1] = -0.48490622;
-        regressionCoef[2] = -0.26527693;
-        regressionCoef[3] = 0.;
-        regressionCoef[4] = 0.96311349; // Константа
+        regressionCoef[0] = -0.44005036979733819;
+        regressionCoef[1] = -0.43525670972576069;
+        regressionCoef[2] = -0.27452312098454945;
+        regressionCoef[3] = -0.16282805461149963;
+        regressionCoef[4] = 1.0868493902627618; // Константа
     }
 
     public static class DistanceWithShift {
@@ -129,6 +128,8 @@ public class PreciseVerseDistanceCounter {
         for( int k = 0; k < maxByPriority.length; k++ ) {
            similarity += regressionCoef[k] * maxByPriority[k];
         }
+        similarity = Math.min(similarity, 1.0);
+        similarity = Math.max(similarity, 0.0);
 
         return similarity;
     }
