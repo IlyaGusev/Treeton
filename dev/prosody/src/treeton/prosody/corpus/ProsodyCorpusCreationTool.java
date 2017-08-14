@@ -20,6 +20,7 @@ import treeton.core.config.context.resources.xmlimpl.ResourcesContextXMLImpl;
 import treeton.core.config.context.treenotations.TreenotationsContext;
 import treeton.core.util.LoggerProgressListener;
 
+import java.awt.*;
 import java.io.*;
 
 public class ProsodyCorpusCreationTool {
@@ -27,6 +28,8 @@ public class ProsodyCorpusCreationTool {
     private static final String LOGGER_CONFIGURATION_FILE = "logger.config";
 
     public static void main(String[] argv) throws Exception {
+        System.setProperty("java.awt.headless", "true");
+
         if (argv.length < 4 || argv.length > 5) {
             System.out.println("Usage: ProsodyCorpusCreationTool sourceTextFile outputFolder FirstPassResourceChainName corpusLabel [SecondPassResourceChainName]");
             return;

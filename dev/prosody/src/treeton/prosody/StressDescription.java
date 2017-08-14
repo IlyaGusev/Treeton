@@ -2,7 +2,7 @@
  * Copyright Anatoly Starostin (c) 2017.
  */
 
-package treeton.prosody.musimatix;
+package treeton.prosody;
 
 import treeton.prosody.SyllableInfo;
 

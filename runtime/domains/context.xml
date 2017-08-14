@@ -652,7 +652,6 @@
                     <REF RESOURCE="Russian_MorphMinimizator"/>
                     <REF RESOURCE="Russian_UnknownMorphGenerator"/>
                     <REF RESOURCE="Russian_AccentGenerator"/>
-                    <REF RESOURCE="UniversalProsodyFragmentator"/>
                 </CHAIN>
                              
                 <CHAIN NAME="OnlySyllabizatorChain">

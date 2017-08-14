@@ -4,6 +4,7 @@
 
 package treeton.prosody.musimatix;
 
+import treeton.prosody.StressDescription;
 import treeton.prosody.SyllableInfo;
 
 import java.util.ArrayList;
