@@ -450,6 +450,17 @@ public class VerseProcessor {
                             metricVector.set(place + spacePerMeter - 1, tail / nonNullCount);
                         }
                     }
+
+                    for( int i = 0; i < MeterProbabilitiesCounter.NUMBER_OF_CADENCES_TYPES; i++) {
+                        List<double[]> probabilities = meterProbabilities.get(MeterProbabilitiesCounter.Cadences[i]);
+
+                        double[] probabilitiesForAllVerses = probabilities.get(0);
+                        double p = (probabilitiesForAllVerses == null || verseIndex >= probabilitiesForAllVerses.length) ? 0.0 :
+                                probabilitiesForAllVerses[verseIndex];
+
+                        metricVector.set(metricVectorDimension - 3 + i, p);
+                    }
+
                 }
 
                 result.add(new VerseDescription(metricVector, verseProcessingUtilities.generateSyllableInfo(storage, forceStressed, forceUnstressed, verseTrn), fragmentIds == null ? -1 : fragmentIds.get(verseIndex)));
@@ -639,6 +650,45 @@ public class VerseProcessor {
             }
 
             stressDescriptions.add(new StressDescription(sylInfo));
+        }
+    }
+
+    void parseRawSyllables(ArrayList<String> rawSyllableStrings, ArrayList<String> plainOutput, ArrayList<StressDescription> stressDescriptions) throws Exception {
+        for (String syllableString : rawSyllableStrings) {
+            int bracketIndex = syllableString.indexOf('(');
+            if(bracketIndex >= 0) {
+                syllableString = syllableString.substring(0, bracketIndex);
+            }
+            String[] syllables = syllableString.split(";");
+
+            ArrayList<SyllableInfo> syllInfos = new ArrayList<>();
+            StringBuilder buf = new StringBuilder();
+            int prevEnd = -1;
+            for (String syllable : syllables) {
+                if(syllable.isEmpty()) {
+                    continue;
+                }
+
+                String[] syllDescr = syllable.split(",");
+
+                int shift = Integer.valueOf(syllDescr[0]);
+                int length = Integer.valueOf(syllDescr[1]);
+                boolean stressed = syllDescr[2].equals("S");
+
+                if(prevEnd >= 0 && prevEnd != shift) {
+                    buf.append(' ');
+                }
+
+                prevEnd = shift + length;
+
+                syllInfos.add(new SyllableInfo(buf.length(),2,
+                        stressed ? SyllableInfo.StressStatus.STRESSED : SyllableInfo.StressStatus.UNSTRESSED));
+
+                buf.append("ла");
+            }
+
+            plainOutput.add(buf.toString());
+            stressDescriptions.add(new StressDescription(syllInfos));
         }
     }
 
