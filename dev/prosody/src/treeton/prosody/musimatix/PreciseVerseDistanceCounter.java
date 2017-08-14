@@ -13,9 +13,7 @@ public class PreciseVerseDistanceCounter {
     private int[] dimensionPriorities; // Приоритеты столбцов матрицы "вероятностей".
     private DimensionOperation[] dimensionOperations; // Операции для "сложения" вероятностей в разных столбцах.
     private int numberOfPriorities; // Количество приоритетов.
-    private double[] dimensionProbsMask; // Коэффициенты для разных столбцов.
-    // Нормировочный коэффициент на основе средних вероятностей по строкам и наших коэффициентов.
-    private double sumProbForDimensionProbsMask;
+    private double[] regressionCoef; // Коэффициенты для разных столбцов.
 
     public enum DimensionOperation {
         Multiplication, Delta
@@ -31,31 +29,16 @@ public class PreciseVerseDistanceCounter {
         this.dimensionOperations = dimensionOperations;
         this.numberOfPriorities = numberOfPriorities;
 
-        dimensionProbsMask = new double[numberOfPriorities];
-        for( int i = 0; i < dimensionProbsMask.length; i++ ) {
-            dimensionProbsMask[i] = 0.0;
-        }
-        for(int i = 0; i < sourceAverage.size(); i++) {
-            int priority = dimensionPriorities[i];
-            // TODO: Костыль ниже.
-            Double p =  dimensionOperations[i] == DimensionOperation.Multiplication ? sourceAverage.get(i) : 1.0;
-            p = p == null ? 0.0 : p;
-            dimensionProbsMask[priority] = Math.max( dimensionProbsMask[priority], p );
+        regressionCoef = new double[numberOfPriorities+1];
+        for( int i = 0; i < regressionCoef.length; i++ ) {
+            regressionCoef[i] = 0.0;
         }
 
-        dimensionProbsMask[2] *= (1 - dimensionProbsMask[0]);
-        dimensionProbsMask[1] *= (1 - dimensionProbsMask[0]);
-        dimensionProbsMask[2] *= (1 - dimensionProbsMask[1]);
-        dimensionProbsMask[3] *= 0.2;
-
-        sumProbForDimensionProbsMask = 0.0;
-        for (double p : dimensionProbsMask) {
-            sumProbForDimensionProbsMask += p;
-        }
-
-        if( sumProbForDimensionProbsMask < 0.0001 ) { //защита
-            sumProbForDimensionProbsMask = 0.01;
-        }
+        regressionCoef[0] = -0.44102627;
+        regressionCoef[1] = -0.48490622;
+        regressionCoef[2] = -0.26527693;
+        regressionCoef[3] = 0.;
+        regressionCoef[4] = 0.96311349; // Константа
     }
 
     public static class DistanceWithShift {
@@ -103,6 +86,10 @@ public class PreciseVerseDistanceCounter {
         int targetLineNum = countLines( target );
         double similarity = 0;
         int realLinesNum = 0;
+        double[] sumVectorSimilarity = new double[source.get(0).metricVector.size()];
+        for( int k = 0; k < sumVectorSimilarity.length; k++ ) {
+            sumVectorSimilarity[k] = 0.0;
+        }
         while( sourceShift < source.size() && targetShift < target.size() ) {
             VerseDescription x = source.get(sourceShift);
             if( x == null || x.metricVectorIsZero() ) {
@@ -116,8 +103,10 @@ public class PreciseVerseDistanceCounter {
                 continue;
             }
 
-            similarity += getVectorSimilarity(x, y);
-
+            double[] vectorSimilarity = getVectorSimilarity(x, y);
+            for( int k = 0; k < sumVectorSimilarity.length; k++ ) {
+                sumVectorSimilarity[k] += vectorSimilarity[k];
+            }
             sourceShift++;
             targetShift++;
             realLinesNum++;
@@ -125,18 +114,31 @@ public class PreciseVerseDistanceCounter {
         if( realLinesNum != sourceLineNum && realLinesNum != targetLineNum ) {
             return Double.MAX_VALUE;
         }
-        similarity /= realLinesNum;
-        similarity = 1 - similarity;
+        for( int k = 0; k < sumVectorSimilarity.length; k++ ) {
+            sumVectorSimilarity[k] /= realLinesNum;
+        }
+        double[] maxByPriority = new double[numberOfPriorities+1];
+        for( int k = 0; k < maxByPriority.length; k++ ) {
+            maxByPriority[k] = 0.0;
+        }
+        for( int k = 0; k < sumVectorSimilarity.length; k++ ) {
+            int priority = dimensionPriorities[k];
+            maxByPriority[priority] = Math.max(maxByPriority[priority], sumVectorSimilarity[k]);
+        }
+        maxByPriority[numberOfPriorities] = 1.0; // Добавляем константу.
+        for( int k = 0; k < maxByPriority.length; k++ ) {
+           similarity += regressionCoef[k] * maxByPriority[k];
+        }
+
         return similarity;
     }
 
-    private double getVectorSimilarity(VerseDescription x, VerseDescription y) {
+    private double[] getVectorSimilarity(VerseDescription x, VerseDescription y) {
         assert x.metricVector.size() == y.metricVector.size();
 
-        // maxProbabilities - максимальные вероятности для каждого из приоритетов.
-        double[] maxProbabilities = new double[numberOfPriorities];
-        for( int k = 0; k < maxProbabilities.length; k++ ) {
-            maxProbabilities[k] = 0.0;
+        double[] vectorSimilarity = new double[x.metricVector.size()];
+        for( int k = 0; k < vectorSimilarity.length; k++ ) {
+            vectorSimilarity[k] = 0.0;
         }
 
         for( int k = 0; k < x.metricVector.size(); k++ ) {
@@ -145,17 +147,10 @@ public class PreciseVerseDistanceCounter {
 
             double xp = xk == null ? 0.0 : xk;
             double yp = yk == null ? 0.0 : yk;
-            double pp = dimensionOperations[k] == DimensionOperation.Multiplication ? xp * yp : 1 - Math.abs( xp - yp );
-            int priority = dimensionPriorities[k];
-            maxProbabilities[priority] = Math.max(maxProbabilities[priority], pp);
+            vectorSimilarity[k] = dimensionOperations[k] == DimensionOperation.Multiplication ? xp * yp : 1 - Math.abs( xp - yp );
         }
 
-        double sum = 0.0;
-        for( int k = 0; k < maxProbabilities.length; k++ ) {
-            double maxProbability = maxProbabilities[k];
-            sum += maxProbability * dimensionProbsMask[k];
-        }
-        return sum / sumProbForDimensionProbsMask;
+        return vectorSimilarity;
     }
 
     private int countLines(ArrayList<VerseDescription> verseInfo ) {
@@ -167,7 +162,8 @@ public class PreciseVerseDistanceCounter {
                 i++;
                 continue;
             }
-            lineNum += 1;
+            i++;
+            lineNum++;
         }
         return lineNum;
     }
