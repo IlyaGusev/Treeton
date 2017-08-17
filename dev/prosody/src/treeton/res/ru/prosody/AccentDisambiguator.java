@@ -131,7 +131,7 @@ public class AccentDisambiguator extends Resource {
             if( properties.containsKey("heuristicOptimization") ) {
                 heuristicOptimization =  Boolean.valueOf(properties.getProperty("heuristicOptimization"));
             } else {
-                heuristicOptimization =  false;
+                heuristicOptimization =  true;
             }
             probsCounter = new MeterProbabilitiesCounter(getTrnContext(), metricGrammarPath, stressRestrictionViolationWeight, reaccentuationRestrictionViolationWeight,
                     maxStressRestrictionViolations, maxReaccentuationRestrictionViolations, maxSyllablesPerVerse, false, fragmentSimilarityThreshold, heuristicOptimization);

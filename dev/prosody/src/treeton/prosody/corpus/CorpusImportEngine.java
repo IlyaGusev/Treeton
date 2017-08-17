@@ -14,6 +14,8 @@ import treeton.core.model.TreetonModelException;
 import treeton.core.model.TrnType;
 import treeton.core.util.FileMapper;
 import treeton.core.util.ProgressListener;
+import treeton.prosody.StressDescription;
+import treeton.prosody.VerseProcessingUtilities;
 
 import java.io.File;
 import java.io.IOException;
@@ -22,8 +24,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-public class CorpusImportEngine {
-    public CorpusImportEngine( ResourceChain preprocessingChain, ResourceChain postprocessingChain ) throws TreetonModelException, ContextException, ResourceInstantiationException {
+class CorpusImportEngine {
+    CorpusImportEngine(ResourceChain preprocessingChain, ResourceChain postprocessingChain) throws TreetonModelException, ContextException, ResourceInstantiationException {
         TreenotationsContext trnContext = preprocessingChain.getTrnContext();
 
         corpusElementTrnType = trnContext.getType("CorpusElement");
@@ -38,6 +40,8 @@ public class CorpusImportEngine {
 
         this.preprocessingChain = preprocessingChain;
         this.postprocessingChain = postprocessingChain;
+
+        verseProcessingUtilities = new VerseProcessingUtilities(trnContext);
     }
 
     private TrnType corpusElementTrnType;
@@ -50,6 +54,7 @@ public class CorpusImportEngine {
     private int cycleFeature;
     private ResourceChain preprocessingChain;
     private ResourceChain postprocessingChain;
+    private VerseProcessingUtilities verseProcessingUtilities;
 
     void Import( CorpusFolder targetFolder, File source, ProgressListener progressListener ) throws IOException, CorpusException, ExecutionException {
         Corpus corpus = targetFolder.getCorpus();
@@ -76,7 +81,7 @@ public class CorpusImportEngine {
             TreenotationStorageImpl metadataStorage = entry.getMetadata();
 
             preprocessingChain.setProgressListener(progressListener);
-            preprocessingChain.execute(entry.getText(),metadataStorage,new HashMap<String, Object>());
+            preprocessingChain.execute(entry.getText(),metadataStorage, new HashMap<>());
             preprocessingChain.setProgressListener(null);
 
             Token first = metadataStorage.firstToken();
@@ -86,9 +91,36 @@ public class CorpusImportEngine {
             corpusElement.put( titleFeature, TreetonFactory.newTString( f.getName() ) );
             metadataStorage.add( corpusElement );
 
+            int verseStart = -1;
+            for(int i = 0; i < chars.length;i++) {
+                char c = chars[i];
+                if(c == '\n') {
+                    if(verseStart != -1) {
+                        Token start = metadataStorage.getTokenByStartOffset( verseStart, 1 );
+                        Token end = start;
+                        while( end != null ) {
+                            if( end.getEndNumerator() == i && end.getEndDenominator() == 1 ) {
+                                break;
+                            }
+                            end = end.getNextToken();
+                        }
+                        if( start == null || end == null ) {
+                            throw new CorpusException("Something wrong with tokeniser. Offsets of verse do not match token bounds.");
+                        }
+
+                        Treenotation verseTrn = TreetonFactory.newTreenotation(start,end,verseTrnType);
+                        metadataStorage.add(verseTrn);
+
+                        verseStart = -1;
+                    }
+                } else if(verseStart == -1) {
+                    verseStart = i;
+                }
+            }
+
             if( postprocessingChain != null ) {
                 postprocessingChain.setProgressListener(progressListener);
-                postprocessingChain.execute(entry.getText(), metadataStorage, new HashMap<String, Object>());
+                postprocessingChain.execute(entry.getText(), metadataStorage, new HashMap<>());
                 postprocessingChain.setProgressListener(null);
             }
 
@@ -102,11 +134,11 @@ public class CorpusImportEngine {
 
         while( parser.nextFragment() ) {
             CorpusEntry entry = corpus.createEntry( parser.getProperties().get("title"), targetFolder );
-            corpus.changeEntryText(entry,parser.getText());
+            corpus.changeEntryText(entry,parser.getWholeFragmentText());
             TreenotationStorageImpl metadataStorage = entry.getMetadata();
 
             preprocessingChain.setProgressListener(progressListener);
-            preprocessingChain.execute(entry.getText(),metadataStorage,new HashMap<String, Object>());
+            preprocessingChain.execute(entry.getText(),metadataStorage, new HashMap<>());
             preprocessingChain.setProgressListener(null);
 
             Token first = metadataStorage.firstToken();
@@ -131,37 +163,46 @@ public class CorpusImportEngine {
             }
             metadataStorage.add( corpusElement );
 
-            for (SimpleCorpusTextFormatParser.SimpleSpan span : parser.getNoindexZones()) {
-                Token start = metadataStorage.getTokenByStartOffset( span.start, 1 );
-                Token end = start;
-                while( end != null ) {
-                    if( end.getEndNumerator() == span.end && end.getEndDenominator() == 1 ) {
-                        break;
+            ArrayList<StressDescription> stressDescriptions = new ArrayList<>();
+
+            int startOffset = 0;
+            for (SimpleCorpusTextFormatParser.Chunk chunk : parser.getChunks()) {
+                int endOffset = startOffset + chunk.getText().length();
+
+                if(endOffset - startOffset > 1) {
+                    Token start = metadataStorage.getTokenByStartOffset(startOffset, 1);
+                    Token end = start;
+                    while (end != null) {
+                        if (end.getEndNumerator() == endOffset && end.getEndDenominator() == 1) {
+                            break;
+                        }
+                        end = end.getNextToken();
                     }
-                    end = end.getNextToken();
-                }
-                if( start == null || end == null ) {
-                    throw new CorpusException("Something wrong with tokeniser. Offsets of ignored area do not match token bounds.");
+                    if (start == null || end == null) {
+                        throw new CorpusException("Something wrong with tokeniser. Offsets of ignored area do not match token bounds.");
+                    }
+                    if (chunk.isNoIndex()) {
+                        Treenotation ignoredZone = TreetonFactory.newTreenotation(start, end, ignoredTextTrnType);
+                        metadataStorage.add(ignoredZone);
+                    } else {
+                        Treenotation verseTrn = TreetonFactory.newTreenotation(start, end, verseTrnType);
+                        metadataStorage.add(verseTrn);
+                        stressDescriptions.add(chunk.getStressDescription());
+                    }
                 }
 
-                Treenotation ignoredZone = TreetonFactory.newTreenotation(start,end,ignoredTextTrnType);
-                metadataStorage.add(ignoredZone);
-
-                TypeIteratorInterface iterator = metadataStorage.typeIterator(verseTrnType, ignoredZone.getStartToken(), ignoredZone.getEndToken());
-
-                while( iterator.hasNext() ) {
-                    Treenotation verseTrn = (Treenotation) iterator.next();
-                    metadataStorage.forget(verseTrn);
-                }
+                startOffset = endOffset;
             }
+
+            verseProcessingUtilities.injectSyllableInfo(metadataStorage, stressDescriptions);
 
             if( postprocessingChain != null ) {
                 postprocessingChain.setProgressListener(progressListener);
-                postprocessingChain.execute(entry.getText(), metadataStorage, new HashMap<String, Object>());
+                postprocessingChain.execute(entry.getText(), metadataStorage, new HashMap<>());
                 postprocessingChain.setProgressListener(null);
             }
 
-            // нулевая версию трактуем как, что лингвоакцентный анализ произведен, а ритмико-метрический - нет
+            // нулевую версию трактуем как, что лингвоакцентный анализ произведен, а ритмико-метрический - нет
             corpus.metadataWasReloaded(entry);
         }
     }

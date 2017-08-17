@@ -17,6 +17,7 @@ import treeton.core.config.context.resources.xmlimpl.ResourcesContextXMLImpl;
 import treeton.core.config.context.treenotations.TreenotationsContext;
 import treeton.core.model.TrnType;
 import treeton.core.util.ProgressListener;
+import treeton.prosody.StressDescription;
 import treeton.prosody.SyllableInfo;
 import treeton.prosody.VerseProcessingUtilities;
 import treeton.prosody.mdlcompiler.fsm.Meter;
@@ -258,18 +259,6 @@ public class VerseProcessor {
             throw new RuntimeException("Error during processing lyrics: " + sb.toString(), e);
         }
 
-        Map<Integer, TreenotationImpl> syllablesMap = new HashMap<>();
-        TypeIteratorInterface syllablesIterator = storage.typeIterator(syllableTp, storage.firstToken(), storage.lastToken());
-
-        while (syllablesIterator.hasNext()) {
-            TreenotationImpl syllable = (TreenotationImpl) syllablesIterator.next();
-            syllablesMap.put(syllable.getStartNumerator(), syllable);
-        }
-
-        HashSet<Treenotation> forceStressed = null;
-        HashSet<Treenotation> forceUnstressed = null;
-        Iterator<StressDescription> externalStressesIterator = externalStressInfo == null ? null : externalStressInfo.iterator();
-
         int offset = 0;
         for (String verse : verses) {
             if (verse.trim().isEmpty()) {
@@ -287,46 +276,17 @@ public class VerseProcessor {
 
             storage.add(TreetonFactory.newTreenotation(start, end, verseTp));
 
-            if (externalStressesIterator != null) {
-                assert externalStressesIterator.hasNext();
-
-                forceStressed = new HashSet<>();
-                forceUnstressed = new HashSet<>();
-
-                StressDescription externalStressDescription = externalStressesIterator.next();
-
-                for (SyllableInfo syllableInfo : externalStressDescription) {
-                    if (syllableInfo.stressStatus == SyllableInfo.StressStatus.AMBIGUOUS) {
-                        continue;
-                    }
-
-                    TreenotationImpl syllable = syllablesMap.get(offset + syllableInfo.startOffset);
-                    if (syllable == null) { //TODO надо бы варнинги куда-то писать
-                        continue;
-                    }
-                    int length = syllable.getEndNumerator() - syllable.getStartNumerator();
-                    if (length != syllableInfo.length) { //TODO надо бы варнинги куда-то писать
-                        continue;
-                    }
-
-                    TreenotationImpl accVariant = (TreenotationImpl) TreetonFactory.newSyntaxTreenotation(storage, syllable.getStartToken(),
-                            syllable.getEndToken(), accVariantTp);
-                    accVariant.put(userVariantFeatureId, Boolean.TRUE);
-                    accVariant.addTree(new TreenotationImpl.Node(
-                            syllableInfo.stressStatus == SyllableInfo.StressStatus.STRESSED ?
-                                    TreenotationImpl.PARENT_CONNECTION_STRONG :
-                                    TreenotationImpl.PARENT_CONNECTION_WEAK, syllable));
-                    if (syllableInfo.stressStatus == SyllableInfo.StressStatus.STRESSED) {
-                        forceStressed.add(syllable);
-                    } else {
-                        forceUnstressed.add(syllable);
-                    }
-
-                    storage.add(accVariant);
-                }
-            }
-
             offset += verse.length() + 1;
+        }
+
+        HashSet<Treenotation> forceStressed = null;
+        HashSet<Treenotation> forceUnstressed = null;
+
+        if(externalStressInfo != null) {
+            forceStressed = new HashSet<>();
+            forceUnstressed = new HashSet<>();
+
+            verseProcessingUtilities.injectSyllableInfo(storage, forceStressed, forceUnstressed, externalStressInfo);
         }
 
         HashMap<String, List<double[]>> meterProbabilities = new HashMap<>();
@@ -516,141 +476,6 @@ public class VerseProcessor {
         sb.append(" )");
 
         return sb.toString();
-    }
-
-    private static String locateUserAccentMarkup(String verse, ArrayList<Integer> stressPlaces, ArrayList<Pair<Integer, Integer>> unstressedZones) {
-        StringBuilder sb = new StringBuilder();
-
-        for (int i = 0; i < verse.length(); i++) {
-            char c = verse.charAt(i);
-
-            if (c == '{') {
-                int j = i + 1;
-                for (; j < verse.length(); j++) {
-                    c = verse.charAt(j);
-                    if (c == '}') {
-                        break;
-                    }
-                }
-                if (j == verse.length()) {
-                    throw new RuntimeException("Unclosed '{' in the input file, verse" + verse);
-                }
-
-                String syl = verse.substring(i + 1, j);
-                int sylPlace = syl.indexOf('\'');
-                if (sylPlace == -1) {
-                    unstressedZones.add(new Pair<>(sb.length(), sb.length() + syl.length()));
-                    sb.append(syl);
-                    i = j;
-                } else if (sylPlace == 0) {
-                    throw new RuntimeException("Accent sign right after '{', verse" + verse);
-                } else {
-                    if (!Character.isLetter(syl.charAt(sylPlace - 1))) {
-                        throw new RuntimeException("Accent sign not after letter, verse" + verse);
-                    }
-                    stressPlaces.add(sb.length() + sylPlace - 1);
-                    sb.append(syl.substring(0, sylPlace)).append(syl.substring(sylPlace + 1));
-                    i = j;
-                }
-            } else if (c == '\\') {
-                i++;
-                if (i == verse.length()) {
-                    break;
-                }
-                sb.append(verse.charAt(i));
-            } else {
-                sb.append(c);
-            }
-        }
-
-        return sb.toString();
-    }
-
-    public void parseFormattedVerses(ArrayList<String> formattedInput, ArrayList<String> plainOutput, ArrayList<StressDescription> stressDescriptions) throws Exception {
-        TreenotationsContext trnContext = ContextConfiguration.trnsManager().get("Common.Russian.Prosody");
-        ResourcesContextXMLImpl resContext = (ResourcesContextXMLImpl)
-                ContextConfiguration.resourcesManager().get(ContextUtil.getFullName(trnContext));
-
-        ResourceChain syllabizatorChain = new ResourceUtils().createResourceChain(resContext.getResourceChainModel("OnlySyllabizatorChain", true));
-        syllabizatorChain.initialize(trnContext);
-
-        TreenotationStorageImpl storage = (TreenotationStorageImpl) TreetonFactory.newTreenotationStorage(trnContext);
-        TrnType syllableTp = trnContext.getType("Syllable");
-
-        for (String verse : formattedInput) {
-            ArrayList<Integer> stressPlaces = new ArrayList<>();
-            ArrayList<Pair<Integer, Integer>> unstressedZones = new ArrayList<>();
-
-            String pureString = locateUserAccentMarkup(verse, stressPlaces, unstressedZones);
-
-            plainOutput.add(pureString);
-
-            syllabizatorChain.execute(pureString, storage, new HashMap<>());
-
-            Map<Integer, TreenotationImpl> syllablesCoverage = new HashMap<>();
-
-            TypeIteratorInterface syllablesIterator = storage.typeIterator(syllableTp, storage.firstToken(), storage.lastToken());
-
-            while (syllablesIterator.hasNext()) {
-                TreenotationImpl syllable = (TreenotationImpl) syllablesIterator.next();
-
-                for (int i = syllable.getStartNumerator(); i < syllable.getEndNumerator(); i++) {
-                    syllablesCoverage.put(i, syllable);
-                }
-            }
-
-            HashSet<TreenotationImpl> userStressedSyllables = new HashSet<>();
-
-            for (Integer stressPlace : stressPlaces) {
-                TreenotationImpl syllable = syllablesCoverage.get(stressPlace);
-
-                if (syllable == null) {
-                    throw new RuntimeException("No syllable for position " + stressPlace + ", verse " + verse);
-                }
-
-                userStressedSyllables.add(syllable);
-            }
-
-            HashSet<TreenotationImpl> userUnstressedSyllables = new HashSet<>();
-
-            for (Pair<Integer, Integer> unstressedZone : unstressedZones) {
-                boolean found = false;
-                for (int j = unstressedZone.fst; j < unstressedZone.snd; j++) {
-                    TreenotationImpl syllable = syllablesCoverage.get(j);
-
-                    if (syllable == null) {
-                        continue;
-                    }
-
-                    found = true;
-
-                    if (userStressedSyllables.contains(syllable)) {
-                        throw new RuntimeException("Ambiguous user accent markup, syllable " + syllable.getText() + ", verse " + verse);
-                    }
-
-                    userUnstressedSyllables.add(syllable);
-                }
-
-                if (!found) {
-                    System.err.println("No syllable for zone [" + unstressedZone.fst + "," + unstressedZone.snd + "], verse " + verse);
-                    return;
-                }
-            }
-
-            ArrayList<SyllableInfo> sylInfo = new ArrayList<>();
-
-            for (TreenotationImpl syllable : userStressedSyllables) {
-                sylInfo.add(new SyllableInfo(syllable.getStartNumerator(),
-                        syllable.getEndNumerator() - syllable.getStartNumerator(), SyllableInfo.StressStatus.STRESSED));
-            }
-
-            for (TreenotationImpl syllable : userUnstressedSyllables) {
-                sylInfo.add(new SyllableInfo(syllable.getStartNumerator(),
-                        syllable.getEndNumerator() - syllable.getStartNumerator(), SyllableInfo.StressStatus.UNSTRESSED));
-            }
-
-            stressDescriptions.add(new StressDescription(sylInfo));
-        }
     }
 
     void parseRawSyllables(ArrayList<String> rawSyllableStrings, ArrayList<String> plainOutput, ArrayList<StressDescription> stressDescriptions) throws Exception {

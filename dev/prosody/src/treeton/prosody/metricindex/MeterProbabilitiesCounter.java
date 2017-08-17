@@ -82,7 +82,7 @@ public class MeterProbabilitiesCounter {
         return next == verse2.getStartToken() || verse2.getStartToken().getPreviousToken() == next;
     }
 
-    MeterMatcherInput extractVerseStructure(TreenotationStorageImpl storage, Treenotation verse, boolean reverse) {
+    private MeterMatcherInput extractVerseStructure(TreenotationStorageImpl storage, Treenotation verse, boolean reverse) {
         ArrayList<PhoneticWord> result = new ArrayList<>();
 
         TypeIteratorInterface iterator = storage.typeIterator(phonWordTp, verse.getStartToken(), verse.getEndToken());
@@ -564,7 +564,7 @@ public class MeterProbabilitiesCounter {
                     }
                 }
             } else if (logger.isTraceEnabled()) {
-                logger.trace("  No correct sequence found " );
+                logger.error("  No correct sequence found " );
             }
 
             stressSequences.add( bestSequenceInfo.sequence );

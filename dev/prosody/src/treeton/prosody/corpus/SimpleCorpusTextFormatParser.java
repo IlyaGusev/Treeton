@@ -4,19 +4,50 @@
 
 package treeton.prosody.corpus;
 
+import treeton.prosody.StressDescription;
+import treeton.prosody.VerseProcessingUtilities;
+
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class SimpleCorpusTextFormatParser {
-    public SimpleCorpusTextFormatParser(File inputFile) throws IOException {
+    class Chunk {
+        Chunk(String text, boolean noIndex) {
+            this.text = text;
+            this.stressDescription = null;
+            this.noIndex = noIndex;
+        }
+
+        String getText() {
+            return text;
+        }
+
+        void setText(String text) {
+            this.text = text;
+        }
+
+        public StressDescription getStressDescription() {
+            return stressDescription;
+        }
+
+        void setStressDescription(StressDescription stressDescription) {
+            this.stressDescription = stressDescription;
+        }
+
+        boolean isNoIndex() {
+            return noIndex;
+        }
+
+        private String text;
+        private StressDescription stressDescription;
+        private final boolean noIndex;
+    }
+
+    SimpleCorpusTextFormatParser(File inputFile) throws IOException {
         FileInputStream fis = new FileInputStream( inputFile );
         inputStreamReader = new InputStreamReader( fis, "UTF-8" );
-        currentProperties = new HashMap<String, String>();
-        currentNoindexZones = new ArrayList<SimpleSpan>();
-        currentFragmentText = new StringBuffer(5000);
+        currentProperties = new HashMap<>();
+        currentChunkText = new StringBuffer(5000);
         lastTagText = new StringBuffer(100);
 
         int c = (char) inputStreamReader.read();
@@ -31,34 +62,26 @@ public class SimpleCorpusTextFormatParser {
 
     private Reader inputStreamReader;
     private Map<String,String> currentProperties;
-    private StringBuffer currentFragmentText;
+    private List<Chunk> chunks = new ArrayList<>();
+    private StringBuffer wholeFragmentText = new StringBuffer();
+    private StringBuffer currentChunkText;
     private StringBuffer lastTagText;
-    private int currentNoindexZoneStart = -1;
+    private boolean insideNoindexZone = false;
 
-    class SimpleSpan {
-        SimpleSpan(int start, int end) {
-            this.start = start;
-            this.end = end;
-        }
-
-        int start;
-        int end;
-    }
-
-    private Collection<SimpleSpan> currentNoindexZones;
 
     boolean nextFragment() throws CorpusException, IOException {
         currentProperties.clear();
-        currentNoindexZones.clear();
-        currentFragmentText.setLength(0);
-        currentFragmentText.append('\r');
-        currentFragmentText.append('\n');
+        chunks.clear();
+        Chunk firstChunk = new Chunk("\r\n", true);
+        chunks.add(firstChunk);
+        currentChunkText.setLength(0);
+        wholeFragmentText.setLength(0);
 
-        if( lastTagText.length() == 0 ) {
+        if (lastTagText.length() == 0) {
             return false;
         }
 
-        if( lastTagText.indexOf("=") == -1 ) {
+        if (lastTagText.indexOf("=") == -1) {
             throw new CorpusException("Wrong format. First tag must contain '=' symbol");
         }
 
@@ -68,19 +91,15 @@ public class SimpleCorpusTextFormatParser {
 
         int c = skipEndOfLines();
 
-        while( c != -1 ) {
-            if( c == '<' ) {
+        while (c != -1) {
+            if (c == '<') {
                 readTag();
 
-                if( headerIsComplete && lastTagText.indexOf("=") >= 0 ) {
+                if (headerIsComplete && lastTagText.indexOf("=") >= 0) {
                     break;
                 }
 
-                if( lastTagText.indexOf("=") >= 0 ) {
-                    if( headerIsComplete ) {
-                        break;
-                    }
-
+                if (lastTagText.indexOf("=") >= 0) {
                     parseTag();
                     c = skipEndOfLines();
                 } else {
@@ -89,18 +108,59 @@ public class SimpleCorpusTextFormatParser {
                     c = inputStreamReader.read();
                 }
             } else {
-                if( c != ' ' && c !='\n' && c != '\r') {
+                if (c != ' ' && c != '\n' && c != '\r') {
                     headerIsComplete = true;
                 }
-                currentFragmentText.append( (char)c );
-                c = inputStreamReader.read();
+
+                if (c == '|' && !insideNoindexZone) {
+                    currentChunkText.append(' ');
+                    c = inputStreamReader.read();
+
+                    while (c == ' ' || c == '\r') {
+                        c = inputStreamReader.read();
+                    }
+                    if (c == '\n') {
+                        currentChunkText.append((char) c);
+                        c = inputStreamReader.read();
+                    }
+                } else {
+                    currentChunkText.append((char) c);
+                    if (c == '\n' && !insideNoindexZone) {
+                        chunks.add(new Chunk(currentChunkText.toString(), false));
+                        currentChunkText.setLength(0);
+                    }
+                    c = inputStreamReader.read();
+                }
             }
+        }
+
+        ArrayList<String> formattedStrings = new ArrayList<>();
+        for (Chunk chunk : chunks) {
+            if (!chunk.isNoIndex()) {
+                formattedStrings.add(chunk.getText());
+            }
+        }
+        ArrayList<String> plainStrings = new ArrayList<>();
+        ArrayList<StressDescription> stressDescriptions = new ArrayList<>();
+        try {
+            VerseProcessingUtilities.parseFormattedVerses(formattedStrings, plainStrings, stressDescriptions);
+        } catch (Exception e) {
+            throw new RuntimeException("Wrong verses format", e);
+        }
+
+        for (int i = 0, j=0; i < chunks.size(); i++) {
+            Chunk chunk = chunks.get(i);
+            if (!chunk.isNoIndex()) {
+                chunk.setStressDescription(stressDescriptions.get(j));
+                chunk.setText(plainStrings.get(j++));
+            }
+            wholeFragmentText.append(chunk.getText());
         }
 
         return true;
     }
 
-    void readTag() throws IOException {
+    private void readTag() throws IOException {
         assert lastTagText.length() == 0;
         int c = inputStreamReader.read();
 
@@ -110,7 +170,7 @@ public class SimpleCorpusTextFormatParser {
         }
     }
 
-    void parseTag() throws CorpusException {
+    private void parseTag() throws CorpusException {
         int equalsPlace = lastTagText.indexOf("=");
         if( equalsPlace != -1 ) {
             String attrName = lastTagText.substring( 0, equalsPlace ).trim();
@@ -125,11 +185,18 @@ public class SimpleCorpusTextFormatParser {
             String tagName = lastTagText.toString().trim();
 
             if( "noindex".equals( tagName ) ) {
-                assert currentNoindexZoneStart == -1;
-                currentNoindexZoneStart = currentFragmentText.length();
+                assert !insideNoindexZone;
+                if(currentChunkText.length() > 0) {
+                    chunks.add(new Chunk(currentChunkText.toString(), false));
+                    currentChunkText.setLength(0);
+                }
+                insideNoindexZone = true;
             } else if( "/noindex".equals( tagName ) ) {
-                currentNoindexZones.add( new SimpleSpan( currentNoindexZoneStart, currentFragmentText.length()));
-                currentNoindexZoneStart = -1;
+                if(currentChunkText.length() > 0) {
+                    chunks.add(new Chunk(currentChunkText.toString(), true));
+                    currentChunkText.setLength(0);
+                }
+                insideNoindexZone = false;
             } else {
                 throw new CorpusException( "Unknown tag detected: " + tagName );
             }
@@ -138,7 +205,7 @@ public class SimpleCorpusTextFormatParser {
         lastTagText.setLength(0);
     }
 
-    int skipEndOfLines() throws IOException {
+    private int skipEndOfLines() throws IOException {
         int c = inputStreamReader.read();
 
         while( c == '\n' || c == '\r' ) {
@@ -151,11 +218,11 @@ public class SimpleCorpusTextFormatParser {
         return currentProperties;
     }
 
-    public Collection<SimpleSpan> getNoindexZones() {
-        return currentNoindexZones;
+    List<Chunk> getChunks() {
+        return chunks;
     }
 
-    public String getText() {
-        return currentFragmentText.toString();
+    public String getWholeFragmentText() {
+        return wholeFragmentText.toString();
     }
 }
