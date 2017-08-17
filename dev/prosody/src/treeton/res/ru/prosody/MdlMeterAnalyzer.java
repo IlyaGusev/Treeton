@@ -424,7 +424,6 @@ public class MdlMeterAnalyzer extends Resource {
     int form_feature;
     int stats_feature;
     int stats_feature_verse;
-    int MorphArr_feature;
 
     double stressRestrictionViolationWeight;
     double reaccentuationRestrictionViolationWeight;
@@ -442,7 +441,6 @@ public class MdlMeterAnalyzer extends Resource {
             form_feature = verseTp.getFeatureIndex("form");
             stats_feature_verse = verseTp.getFeatureIndex("stats");
 
-            MorphArr_feature = accvarTp.getFeatureIndex("MorphArr");
             stats_feature = accvarTp.getFeatureIndex("stats");
 
             TrnTypeSetFactory factory = new TrnTypeSetFactory();
