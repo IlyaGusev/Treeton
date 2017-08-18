@@ -787,7 +787,7 @@ public class VerseProcessor {
     }
 
     public PreciseVerseDistanceCounter createVerseDistanceCounter(ArrayList<VerseDescription> verseDescriptions,
-                                                                  int firstLineIndex)
+                                                                  int firstLineIndex, double[] regressionCoefficients)
     {
 
         int[] dimensionPriorities = new int[metricVectorDimension];
@@ -817,9 +817,8 @@ public class VerseProcessor {
         dimensionOperations[metricVectorDimension-2] = PreciseVerseDistanceCounter.DimensionOperation.Delta;
         dimensionOperations[metricVectorDimension-1] = PreciseVerseDistanceCounter.DimensionOperation.Delta;
 
-        return new PreciseVerseDistanceCounter( verseDescriptions,
-                countAverage(verseDescriptions, firstLineIndex), firstLineIndex,
+        return new PreciseVerseDistanceCounter( verseDescriptions, firstLineIndex,
                 probsCounter.getMaxMeterPriority()+2, dimensionPriorities,
-                dimensionOperations );
+                dimensionOperations, regressionCoefficients );
     }
 }

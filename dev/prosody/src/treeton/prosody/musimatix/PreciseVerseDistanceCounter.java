@@ -5,7 +5,6 @@
 package treeton.prosody.musimatix;
 
 import java.util.ArrayList;
-import java.util.Vector;
 
 public class PreciseVerseDistanceCounter {
     private ArrayList<VerseDescription> sourceVerseInfo; // Набор строчек текста-запроса.
@@ -13,31 +12,22 @@ public class PreciseVerseDistanceCounter {
     private int[] dimensionPriorities; // Приоритеты столбцов матрицы "вероятностей".
     private DimensionOperation[] dimensionOperations; // Операции для "сложения" вероятностей в разных столбцах.
     private int numberOfPriorities; // Количество приоритетов.
-    private double[] regressionCoef; // Коэффициенты для разных столбцов.
+    private double[] regressionCoefficients; // Коэффициенты для разных столбцов.
 
     public enum DimensionOperation {
         Multiplication, Delta
     }
 
-    PreciseVerseDistanceCounter( ArrayList<VerseDescription> sourceVerseInfo, Vector<Double> sourceAverage,
-                                 int sourceFirstLineIndex, int numberOfPriorities, int[] dimensionPriorities,
-                                 DimensionOperation[] dimensionOperations )
+    PreciseVerseDistanceCounter( ArrayList<VerseDescription> sourceVerseInfo, int sourceFirstLineIndex,
+                                 int numberOfPriorities, int[] dimensionPriorities,
+                                 DimensionOperation[] dimensionOperations, double[] regressionCoefficients )
     {
         this.sourceVerseInfo = sourceVerseInfo;
         this.sourceFirstLineIndex = sourceFirstLineIndex;
         this.dimensionPriorities = dimensionPriorities;
         this.dimensionOperations = dimensionOperations;
         this.numberOfPriorities = numberOfPriorities;
-
-        regressionCoef = new double[numberOfPriorities+1];
-        for( int i = 0; i < regressionCoef.length; i++ ) {
-            regressionCoef[i] = 0.0;
-        }
-        regressionCoef[0] = -0.44005036979733819;
-        regressionCoef[1] = -0.43525670972576069;
-        regressionCoef[2] = -0.27452312098454945;
-        regressionCoef[3] = -0.16282805461149963;
-        regressionCoef[4] = 1.0868493902627618; // Константа
+        this.regressionCoefficients = regressionCoefficients;
     }
 
     public static class DistanceWithShift {
@@ -126,7 +116,7 @@ public class PreciseVerseDistanceCounter {
         }
         maxByPriority[numberOfPriorities] = 1.0; // Добавляем константу.
         for( int k = 0; k < maxByPriority.length; k++ ) {
-           similarity += regressionCoef[k] * maxByPriority[k];
+           similarity += regressionCoefficients[k] * maxByPriority[k];
         }
         similarity = Math.min(similarity, 1.0);
         similarity = Math.max(similarity, 0.0);
