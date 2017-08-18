@@ -10,7 +10,9 @@ import treeton.core.config.BasicConfiguration;
 import treeton.core.config.context.ContextConfiguration;
 import treeton.core.config.context.ContextConfigurationProsodyImpl;
 import treeton.core.util.ObjectPair;
+import treeton.prosody.StressDescription;
 import treeton.prosody.SyllableInfo;
+import treeton.prosody.VerseProcessingUtilities;
 
 import java.io.*;
 import java.util.*;
@@ -56,7 +58,7 @@ public class VerseProcessingTool {
             }
         } else if( inputFormat == InputFormat.FORMATTED ) {
             try {
-                processor.parseFormattedVerses(formattedLyrics, plainLyrics, stressDescriptions);
+                VerseProcessingUtilities.parseFormattedVerses(formattedLyrics, plainLyrics, stressDescriptions);
             } catch (Exception e) {
                 System.err.println("Unable to parse formatted lyrics (file "+inputFile.getPath()+"): " + e.getMessage());
                 return null;

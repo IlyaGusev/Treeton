@@ -267,7 +267,6 @@ public class VerseProcessor extends Resource {
     int form_feature;
     int nVariants_feature;
     int AccentVariantArr_feature;
-    int MorphArr_feature;
 
     ArrayList<TreenotationImpl> tarr;
 
@@ -306,9 +305,6 @@ public class VerseProcessor extends Resource {
             form_feature = verseTp.getFeatureIndex("form");
             nVariants_feature = verseTp.getFeatureIndex("nVariants");
             AccentVariantArr_feature = verseTp.getFeatureIndex("AccentVariantArr");
-
-
-            MorphArr_feature = accvarTp.getFeatureIndex("MorphArr");
 
             TrnTypeSetFactory factory = new TrnTypeSetFactory();
             accvarTpSet = factory.newTrnTypeSet(new TrnType[]{accvarTp},1);
