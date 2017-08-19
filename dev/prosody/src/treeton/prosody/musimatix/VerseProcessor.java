@@ -163,7 +163,6 @@ public class VerseProcessor {
 
             Collection<Meter> meters = probsCounter.getMeters();
             this.spacePerMeter = spacePerMeter == -1 ? 3 : spacePerMeter;
-            averageFootnessMode = spacePerMeter == -1;
 
             metricVectorDimension = meters.size() * this.spacePerMeter + MeterProbabilitiesCounter.NUMBER_OF_CADENCES_TYPES;
             meterInsideVectorOrder = new HashMap<>();
@@ -352,75 +351,48 @@ public class VerseProcessor {
                 Vector<Double> metricVector = new Vector<>();
                 metricVector.setSize(metricVectorDimension);
 
-                if (averageFootnessMode) {
-                    for( Meter meter : probsCounter.getMeters() ) {
-                        String meterName = meter.getName();
-                        List<double[]> probabilities = meterProbabilities.get(meterName);
+                for ( Meter meter : probsCounter.getMeters() ) {
+                    String meterName = meter.getName();
+                    List<double[]> probabilities = meterProbabilities.get(meterName);
 
-                        Integer place = meterInsideVectorOrder.get(meterName);
-                        assert place != null;
+                    Integer place = meterInsideVectorOrder.get(meterName);
+                    assert place != null;
 
-                        for (int footness = 0; footness < probabilities.size(); footness++) {
-                            double[] probabilitiesForAllVerses = probabilities.get(footness);
-                            if (probabilitiesForAllVerses == null || verseIndex >= probabilitiesForAllVerses.length) {
-                                continue;
-                            }
-
-                            double p = probabilitiesForAllVerses[verseIndex];
-
-                            Double oldp = metricVector.get(place);
-                            if (oldp == null || p >= oldp) {
-                                metricVector.set(place, p);
-                                metricVector.set(place + 1, (double) footness);
-                                metricVector.set(place + 2, null); // внутри одной строки разброс нулевой
-                            }
-                        }
-                    }
-                } else {
-                    for ( Meter meter : probsCounter.getMeters() ) {
-                        String meterName = meter.getName();
-                        List<double[]> probabilities = meterProbabilities.get(meterName);
-
-                        Integer place = meterInsideVectorOrder.get(meterName);
-                        assert place != null;
-
-                        for (int footness = 0; footness < spacePerMeter - 1 &&
-                                footness < probabilities.size(); footness++) {
-                            double[] probabilitiesForAllVerses = probabilities.get(footness);
-                            double p = (probabilitiesForAllVerses == null || verseIndex >= probabilitiesForAllVerses.length) ? 0.0 :
-                                    probabilitiesForAllVerses[verseIndex];
-
-                            metricVector.set(place + footness, p);
-                        }
-
-                        double tail = 0;
-                        int nonNullCount = 0;
-
-                        for (int footness = spacePerMeter - 1; footness < probabilities.size(); footness++) {
-                            double[] probabilitiesForAllVerses = probabilities.get(footness);
-                            if (probabilitiesForAllVerses == null || verseIndex >= probabilitiesForAllVerses.length) {
-                                continue;
-                            }
-
-                            tail += probabilitiesForAllVerses[verseIndex];
-                            nonNullCount++;
-                        }
-
-                        if (tail > 0 && nonNullCount > 0) {
-                            metricVector.set(place + spacePerMeter - 1, tail / nonNullCount);
-                        }
-                    }
-
-                    for( int i = 0; i < MeterProbabilitiesCounter.NUMBER_OF_CADENCES_TYPES; i++) {
-                        List<double[]> probabilities = meterProbabilities.get(MeterProbabilitiesCounter.Cadences[i]);
-
-                        double[] probabilitiesForAllVerses = probabilities.get(0);
+                    for (int footness = 0; footness < spacePerMeter - 1 &&
+                            footness < probabilities.size(); footness++) {
+                        double[] probabilitiesForAllVerses = probabilities.get(footness);
                         double p = (probabilitiesForAllVerses == null || verseIndex >= probabilitiesForAllVerses.length) ? 0.0 :
                                 probabilitiesForAllVerses[verseIndex];
 
-                        metricVector.set(metricVectorDimension - 3 + i, p);
+                        metricVector.set(place + footness, p);
                     }
 
+                    double tail = 0;
+                    int nonNullCount = 0;
+
+                    for (int footness = spacePerMeter - 1; footness < probabilities.size(); footness++) {
+                        double[] probabilitiesForAllVerses = probabilities.get(footness);
+                        if (probabilitiesForAllVerses == null || verseIndex >= probabilitiesForAllVerses.length) {
+                            continue;
+                        }
+
+                        tail += probabilitiesForAllVerses[verseIndex];
+                        nonNullCount++;
+                    }
+
+                    if (tail > 0 && nonNullCount > 0) {
+                        metricVector.set(place + spacePerMeter - 1, tail / nonNullCount);
+                    }
+                }
+
+                for( int i = 0; i < MeterProbabilitiesCounter.NUMBER_OF_CADENCES_TYPES; i++) {
+                    List<double[]> probabilities = meterProbabilities.get(MeterProbabilitiesCounter.Cadences[i]);
+
+                    double[] probabilitiesForAllVerses = probabilities.get(0);
+                    double p = (probabilitiesForAllVerses == null || verseIndex >= probabilitiesForAllVerses.length) ? 0.0 :
+                            probabilitiesForAllVerses[verseIndex];
+
+                    metricVector.set(metricVectorDimension - 3 + i, p);
                 }
 
                 result.add(new VerseDescription(metricVector, verseProcessingUtilities.generateSyllableInfo(storage, forceStressed, forceUnstressed, verseTrn), fragmentIds == null ? -1 : fragmentIds.get(verseIndex)));
@@ -434,7 +406,6 @@ public class VerseProcessor {
     private MeterProbabilitiesCounter probsCounter;
     private int metricVectorDimension;
     private int spacePerMeter;
-    private boolean averageFootnessMode;
     private Map<String, Integer> meterInsideVectorOrder;
     // Пока-что отказались идеи априорной дифференциации различных шаблонов
     //private Map<String,Double> meterStrength;
@@ -549,17 +520,7 @@ public class VerseProcessor {
 
             for (j = 0; j < metricVectorDimension; j++) {
                 Double average = averageVector.get(j);
-                Double current;
-
-                if (averageFootnessMode && (j % 3) == 2 && j < metricVectorDimension - MeterProbabilitiesCounter.NUMBER_OF_CADENCES_TYPES ) {
-                    current = verseDescription.metricVector.get(j - 2);
-                    if (current != null) {
-                        current *= verseDescription.metricVector.get(j - 1);
-                    }
-                } else {
-                    current = verseDescription.metricVector.get(j);
-                }
-
+                Double current = verseDescription.metricVector.get(j);
                 Double newValue;
 
                 if (average == null) {
@@ -588,84 +549,6 @@ public class VerseProcessor {
             aDouble = aDouble / numberOfNonEmptyLines;
             averageVector.set(i, (!filterSmallProbabilities || aDouble > 0.5) ? aDouble : null);
         }
-
-        if (averageFootnessMode) {
-            // в каждом третьем измерении расчитаем отклонения
-
-            Vector<Double> variances = new Vector<>();
-            variances.setSize(metricVectorDimension - MeterProbabilitiesCounter.NUMBER_OF_CADENCES_TYPES);
-            numberOfNonEmptyLines = 0;
-            for (VerseDescription verseDescription : verseDescriptions) {
-                if (verseDescription.metricVector == null) {
-                    continue;
-                }
-
-                int i = 0;
-                for (; i < metricVectorDimension - MeterProbabilitiesCounter.NUMBER_OF_CADENCES_TYPES; i++) {
-                    Double current = verseDescription.metricVector.get(i);
-                    if (current != null && current != 0.0) {
-                        break;
-                    }
-                }
-
-                if (i == metricVectorDimension) {
-                    continue;
-                }
-
-                if (numberOfVersesForAverageVector != -1 && numberOfNonEmptyLines == numberOfVersesForAverageVector) {
-                    break;
-                }
-
-                numberOfNonEmptyLines++;
-
-                for (i = 2; i < metricVectorDimension - MeterProbabilitiesCounter.NUMBER_OF_CADENCES_TYPES; i += 3) {
-                    Double averageFootness = averageVector.get(i);
-                    if (averageFootness == null) {
-                        continue;
-                    }
-
-                    Double currentMeter = verseDescription.metricVector.get(i - 2);
-                    Double currentFootness;
-                    if (currentMeter == null) {
-                        currentFootness = 0.0;
-                    } else {
-                        currentFootness = currentMeter * verseDescription.metricVector.get(i - 1);
-                    }
-
-                    Double averageVariance = variances.get(i);
-                    Double newValue;
-
-                    if (averageVariance == null) {
-                        newValue = (currentFootness - averageFootness) * (currentFootness - averageFootness);
-                    } else {
-                        newValue = averageVariance + (currentFootness - averageFootness) * (currentFootness - averageFootness);
-                    }
-
-                    variances.set(i, newValue);
-                }
-            }
-
-            for (int i = 0; i < metricVectorDimension - MeterProbabilitiesCounter.NUMBER_OF_CADENCES_TYPES; i++) {
-                int x = i % 3;
-
-                if (x == 0) {
-                    Double aDouble = averageVector.get(i);
-                    averageVector.set(i, (aDouble == null ? null : aDouble * meterMult));
-                } else if (x == 1) {
-                    Double aDouble = averageVector.get(i);
-                    averageVector.set(i, (aDouble == null ? null : aDouble * footnessMult));
-                } else {
-                    Double aDouble = variances.get(i);
-                    if (aDouble == null) {
-                        averageVector.set(i, null);
-                    } else {
-                        aDouble = aDouble / numberOfNonEmptyLines;
-                        averageVector.set(i, aDouble * footnessVarianceMult);
-                    }
-                }
-            }
-        }
-
         return averageVector;
     }
 
@@ -728,34 +611,39 @@ public class VerseProcessor {
         return sb.toString();
     }
 
-    public PreciseVerseDistanceCounter createVerseDistanceCounter(ArrayList<VerseDescription> verseDescriptions, int firstLineIndex) {
-        PreciseVerseDistanceCounter result = new PreciseVerseDistanceCounter(verseDescriptions, countAverage(verseDescriptions,firstLineIndex), firstLineIndex, averageFootnessMode, meterMult, footnessMult);
-        if( !averageFootnessMode ) {
-            int[] dimensionPriorities = new int[metricVectorDimension];
-            boolean[] multOrDeltaForDimensions = new boolean[metricVectorDimension];
+    public PreciseVerseDistanceCounter createVerseDistanceCounter(ArrayList<VerseDescription> verseDescriptions,
+                                                                  int firstLineIndex, double[] regressionCoefficients)
+    {
 
-            Collection<Meter> meters = probsCounter.getMeters();
-            ArrayList<Meter> metersArray = new ArrayList<>( meters );
+        int[] dimensionPriorities = new int[metricVectorDimension];
+        PreciseVerseDistanceCounter.DimensionOperation[] dimensionOperations =
+                new PreciseVerseDistanceCounter.DimensionOperation[metricVectorDimension];
+        Collection<Meter> meters = probsCounter.getMeters();
+        ArrayList<Meter> metersArray = new ArrayList<>( meters );
 
-            for (Meter meter : metersArray) {
-                Integer offset = meterInsideVectorOrder.get(meter.getName());
-                for (int j = 0; j < spacePerMeter; j++) {
-                    int priority = meter.getPriority();
-                    assert priority >= 0;
-                    dimensionPriorities[offset+j]= priority;
-                    multOrDeltaForDimensions[offset+j]=true;
-                }
+        // Все измерения, кроме 3 последних - типы метра: ямб, хорей и т.д.
+        // Их "вероятности" между строчками мы будем потом перемножать.
+        // В зависимости от приоритета потом им будут проставлены разные веса.
+        for( Meter meter : metersArray ) {
+            Integer offset = meterInsideVectorOrder.get( meter.getName() );
+            for (int j = 0; j < spacePerMeter; j++) {
+                int priority = meter.getPriority();
+                assert priority >= 0;
+                dimensionPriorities[offset+j] = priority;
+                dimensionOperations[offset+j] = PreciseVerseDistanceCounter.DimensionOperation.Multiplication;
             }
-
-            dimensionPriorities[metricVectorDimension-3]=probsCounter.getMaxMeterPriority()+1;
-            dimensionPriorities[metricVectorDimension-2]=probsCounter.getMaxMeterPriority()+1;
-            dimensionPriorities[metricVectorDimension-1]=probsCounter.getMaxMeterPriority()+1;
-            multOrDeltaForDimensions[metricVectorDimension-3]=false;
-            multOrDeltaForDimensions[metricVectorDimension-2]=false;
-            multOrDeltaForDimensions[metricVectorDimension-1]=false;
-
-            result.setDimensionInfo(probsCounter.getMaxMeterPriority()+2,dimensionPriorities,multOrDeltaForDimensions);
         }
-        return result;
+
+        // Последние 3 измерения - тип рифмы, у них отличается способ сложения.
+        dimensionPriorities[metricVectorDimension-3] = probsCounter.getMaxMeterPriority() + 1;
+        dimensionPriorities[metricVectorDimension-2] = probsCounter.getMaxMeterPriority() + 1;
+        dimensionPriorities[metricVectorDimension-1] = probsCounter.getMaxMeterPriority() + 1;
+        dimensionOperations[metricVectorDimension-3] = PreciseVerseDistanceCounter.DimensionOperation.Delta;
+        dimensionOperations[metricVectorDimension-2] = PreciseVerseDistanceCounter.DimensionOperation.Delta;
+        dimensionOperations[metricVectorDimension-1] = PreciseVerseDistanceCounter.DimensionOperation.Delta;
+
+        return new PreciseVerseDistanceCounter( verseDescriptions, firstLineIndex,
+                probsCounter.getMaxMeterPriority()+2, dimensionPriorities,
+                dimensionOperations, regressionCoefficients );
     }
 }

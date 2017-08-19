@@ -5,291 +5,168 @@
 package treeton.prosody.musimatix;
 
 import java.util.ArrayList;
-import java.util.Vector;
 
 public class PreciseVerseDistanceCounter {
-    private final int sourceFirstLineIndex;
-    private ArrayList<VerseDescription> sourceVerseInfo;
-    private Vector<Double> sourceAverage;
-    private boolean averageFootnessMode;
-    private double meterMult;
-    private double footnessMult;
-    private int[] dimensionPriorities;
-    private boolean[] multOrDeltaForDimensions;
-    private int numberOfPriorities;
-    private double[] dimensionProbsMask;
-    private double sumProbForDimensionProbsMask;
+    private ArrayList<VerseDescription> sourceVerseInfo; // Набор строчек текста-запроса.
+    private final int sourceFirstLineIndex; // Сдвиг в тексте-запросе (часто 0).
+    private int[] dimensionPriorities; // Приоритеты столбцов матрицы "вероятностей".
+    private DimensionOperation[] dimensionOperations; // Операции для "сложения" вероятностей в разных столбцах.
+    private int numberOfPriorities; // Количество приоритетов.
+    private double[] regressionCoefficients; // Коэффициенты для разных столбцов.
 
-    PreciseVerseDistanceCounter(ArrayList<VerseDescription> sourceVerseInfo, Vector<Double> sourceAverage, int sourceFirstLineIndex, boolean averageFootnessMode, double meterMult, double footnessMult) {
+    public enum DimensionOperation {
+        Multiplication, Delta
+    }
+
+    PreciseVerseDistanceCounter( ArrayList<VerseDescription> sourceVerseInfo, int sourceFirstLineIndex,
+                                 int numberOfPriorities, int[] dimensionPriorities,
+                                 DimensionOperation[] dimensionOperations, double[] regressionCoefficients )
+    {
         this.sourceVerseInfo = sourceVerseInfo;
-        this.meterMult = meterMult * meterMult;
-        this.footnessMult = footnessMult * footnessMult;
-        this.averageFootnessMode = averageFootnessMode;
         this.sourceFirstLineIndex = sourceFirstLineIndex;
-        this.sourceAverage = sourceAverage;
-
-        if( averageFootnessMode ) {
-            dimensionPriorities = new int[0];
-            multOrDeltaForDimensions = new boolean[0];
-            numberOfPriorities = 0;
-            dimensionProbsMask = new double[0];
-        }
+        this.dimensionPriorities = dimensionPriorities;
+        this.dimensionOperations = dimensionOperations;
+        this.numberOfPriorities = numberOfPriorities;
+        this.regressionCoefficients = regressionCoefficients;
     }
 
     public static class DistanceWithShift {
-        DistanceWithShift( double distance, int shift ) {
+        DistanceWithShift( double distance, int sourceShift, int targetShift ) {
             this.distance = distance;
-            this.shift = shift;
+            this.sourceShift = sourceShift;
+            this.targetShift = targetShift;
         }
 
         public double distance;
-        public int shift;
+        public int sourceShift;
+        public int targetShift;
 
         @Override
         public String toString() {
             return "DistanceWithShift{" +
                     "distance=" + distance +
-                    ", shift=" + shift +
+                    ", source shift=" + sourceShift +
+                    ", target shift=" + targetShift +
                     '}';
         }
     }
 
-    public DistanceWithShift countDistance( ArrayList<VerseDescription> verseInfo, int firstLineIndex ) {
-        double[] maxProbs = new double[numberOfPriorities];
-        int cntx = 0;
-        int cnty = 0;
-        double similarity = 0.0;
-        int i= sourceFirstLineIndex,j=firstLineIndex;
-        for( ; i < sourceVerseInfo.size() && j < verseInfo.size(); ) {
-            VerseDescription x = sourceVerseInfo.get(i);
+    public DistanceWithShift countDistance( ArrayList<VerseDescription> targetVerseInfo, int targetFirstLineIndex ) {
+        double minSimilarity = Double.MAX_VALUE;
+        DistanceWithShift minDWS = new DistanceWithShift(Double.MAX_VALUE, sourceFirstLineIndex, targetFirstLineIndex );
+        for( int i = sourceFirstLineIndex; i < sourceVerseInfo.size(); i++ ) {
+            for( int j = targetFirstLineIndex; j < targetVerseInfo.size(); j++ ) {
+                double similarity = getMatrixSimilarity(sourceVerseInfo, targetVerseInfo, i, j );
+                if( similarity < minSimilarity ) {
+                    minSimilarity = similarity;
+                    int leftIndex = getFirstValuableLine(sourceVerseInfo, i);
+                    int rightIndex = getFirstValuableLine(targetVerseInfo, j);
+                    minDWS = new DistanceWithShift( minSimilarity, leftIndex, rightIndex );
+                }
+            }
+        }
+        return minDWS;
+    }
 
+    private double getMatrixSimilarity(ArrayList<VerseDescription> source, ArrayList<VerseDescription> target,
+                                       int sourceShift, int targetShift)
+    {
+        int sourceLineNum = countLines( source );
+        int targetLineNum = countLines( target );
+        double similarity = 0;
+        int realLinesNum = 0;
+        double[] sumVectorSimilarity = new double[source.get(0).metricVector.size()];
+        for( int k = 0; k < sumVectorSimilarity.length; k++ ) {
+            sumVectorSimilarity[k] = 0.0;
+        }
+        while( sourceShift < source.size() && targetShift < target.size() ) {
+            VerseDescription x = source.get(sourceShift);
             if( x == null || x.metricVectorIsZero() ) {
+                sourceShift++;
+                continue;
+            }
+
+            VerseDescription y = target.get(targetShift);
+            if( y == null || y.metricVectorIsZero() ) {
+                targetShift++;
+                continue;
+            }
+
+            double[] vectorSimilarity = getVectorSimilarity(x, y);
+            for( int k = 0; k < sumVectorSimilarity.length; k++ ) {
+                sumVectorSimilarity[k] += vectorSimilarity[k];
+            }
+            sourceShift++;
+            targetShift++;
+            realLinesNum++;
+        }
+        if( realLinesNum != sourceLineNum && realLinesNum != targetLineNum ) {
+            return Double.MAX_VALUE;
+        }
+        for( int k = 0; k < sumVectorSimilarity.length; k++ ) {
+            sumVectorSimilarity[k] /= realLinesNum;
+        }
+        double[] maxByPriority = new double[numberOfPriorities+1];
+        for( int k = 0; k < maxByPriority.length; k++ ) {
+            maxByPriority[k] = 0.0;
+        }
+        for( int k = 0; k < sumVectorSimilarity.length; k++ ) {
+            int priority = dimensionPriorities[k];
+            maxByPriority[priority] = Math.max(maxByPriority[priority], sumVectorSimilarity[k]);
+        }
+        maxByPriority[numberOfPriorities] = 1.0; // Добавляем константу.
+        for( int k = 0; k < maxByPriority.length; k++ ) {
+           similarity += regressionCoefficients[k] * maxByPriority[k];
+        }
+        similarity = Math.min(similarity, 1.0);
+        similarity = Math.max(similarity, 0.0);
+
+        return similarity;
+    }
+
+    private double[] getVectorSimilarity(VerseDescription x, VerseDescription y) {
+        assert x.metricVector.size() == y.metricVector.size();
+
+        double[] vectorSimilarity = new double[x.metricVector.size()];
+        for( int k = 0; k < vectorSimilarity.length; k++ ) {
+            vectorSimilarity[k] = 0.0;
+        }
+
+        for( int k = 0; k < x.metricVector.size(); k++ ) {
+            Double xk = x.metricVector.get(k);
+            Double yk = y.metricVector.get(k);
+
+            double xp = xk == null ? 0.0 : xk;
+            double yp = yk == null ? 0.0 : yk;
+            vectorSimilarity[k] = dimensionOperations[k] == DimensionOperation.Multiplication ? xp * yp : 1 - Math.abs( xp - yp );
+        }
+
+        return vectorSimilarity;
+    }
+
+    private int countLines(ArrayList<VerseDescription> verseInfo ) {
+        int i = 0;
+        int lineNum = 0;
+        while( i < verseInfo.size() ) {
+            VerseDescription x = verseInfo.get(i);
+            if (x == null || x.metricVectorIsZero()) {
                 i++;
                 continue;
             }
-
-            VerseDescription y = verseInfo.get(j);
-
-            if( y == null || y.metricVectorIsZero() ) {
-                j++;
-                continue;
-            }
-
-            assert x.metricVector.size() == y.metricVector.size();
-
-            for (int k = 0; k < maxProbs.length; k++) {
-                maxProbs[k] = 0.0;
-            }
-
-            double d = 0.0;
-            for( int k = 0; k < x.metricVector.size(); k++ ) {
-                Double xk = x.metricVector.get(k);
-                Double yk = y.metricVector.get(k);
-
-                if( averageFootnessMode ) {
-                    double delta = (xk == null ? 0.0 : xk) - (yk == null ? 0.0 : yk);
-                    delta = delta * delta;
-
-                    int l = k % 3;
-                    if( l == 0 ) {
-                        delta *= meterMult;
-                    } else if( l == 1 ) {
-                        delta *= footnessMult;
-                    }
-                    d += delta;
-                } else {
-                    double xp = xk == null ? 0.0 : xk;
-                    double yp = yk == null ? 0.0 : yk;
-                    double pp = multOrDeltaForDimensions[k] ? xp * yp :
-                            1 - Math.abs( xp - yp );
-                    int priority = dimensionPriorities[k];
-                    maxProbs[priority] = Math.max(maxProbs[priority],pp);
-                }
-            }
-
-            if( averageFootnessMode ) {
-                similarity += Math.sqrt(d);
-            } else {
-                double sum = 0.0;
-                for (int k = 0; k < maxProbs.length; k++) {
-                    double maxProb = maxProbs[k];
-                    sum += maxProb * dimensionProbsMask[k];
-                }
-                similarity += sum / sumProbForDimensionProbsMask;
-            }
-
-            cntx++;
-            cnty++;
             i++;
-            j++;
+            lineNum++;
         }
+        return lineNum;
+    }
 
-        assert cntx == cnty;
-        assert i == sourceVerseInfo.size() || j == verseInfo.size();
-
-        similarity /= cntx;
-
-        if( !averageFootnessMode ) {
-            similarity = 1 - similarity;
-        }
-
-        int shiftOfMin=sourceFirstLineIndex;
-        for( ; i < sourceVerseInfo.size(); shiftOfMin++ ) {
-            VerseDescription x = sourceVerseInfo.get(shiftOfMin);
-
+    private int getFirstValuableLine( ArrayList<VerseDescription> verseInfo, int shift ) {
+        int shiftOfValuable = shift;
+        for( ; shiftOfValuable < verseInfo.size(); shiftOfValuable++ ) {
+            VerseDescription x = sourceVerseInfo.get( shiftOfValuable );
             if( x != null && !x.metricVectorIsZero() ) {
                 break;
             }
         }
-
-        if( i < sourceVerseInfo.size() ) {
-            //Сравниваемый текст меньше исходного
-            return new DistanceWithShift(similarity,shiftOfMin);
-        }
-
-        for( ; j < verseInfo.size(); j++ ) {
-            VerseDescription y = verseInfo.get(j);
-
-            if (y == null || y.metricVectorIsZero()) {
-                continue;
-            }
-
-            cnty++;
-        }
-
-        //Сравниваемый текст больше исходного (cntx < cnty), идем окном
-
-        double minSimilarity = similarity;
-
-        cnty--;
-        for( int l = firstLineIndex + 1; l < verseInfo.size() && cntx <= cnty; ) {
-            // l - смещение в сравниваемом тексте
-
-            VerseDescription y = verseInfo.get(l);
-
-            if( y == null || y.metricVectorIsZero() ) {
-                l++;
-                continue;
-            }
-
-            i=sourceFirstLineIndex;
-            j=l;
-            double currentSimilarity = 0;
-            for( ; i < sourceVerseInfo.size() && j < verseInfo.size(); ) {
-                VerseDescription x = sourceVerseInfo.get(i);
-
-                if( x == null || x.metricVectorIsZero() ) {
-                    i++;
-                    continue;
-                }
-
-                y = verseInfo.get(j);
-
-                if( y == null || y.metricVectorIsZero() ) {
-                    j++;
-                    continue;
-                }
-
-                assert x.metricVector.size() == y.metricVector.size();
-
-                for (int k = 0; k < maxProbs.length; k++) {
-                    maxProbs[k] = 0.0;
-                }
-
-                double d = 0.0;
-                for( int k = 0; k < x.metricVector.size(); k++ ) {
-                    Double xk = x.metricVector.get(k);
-                    Double yk = y.metricVector.get(k);
-
-                    if( averageFootnessMode ) {
-                        double delta = (xk == null ? 0.0 : xk) - (yk == null ? 0.0 : yk);
-                        delta = delta * delta;
-
-                        int m = k % 3;
-                        if( m == 0 ) {
-                            delta *= meterMult;
-                        } else if( m == 1 ) {
-                            delta *= footnessMult;
-                        }
-                        d += delta;
-                    } else {
-                        double xp = xk == null ? 0.0 : xk;
-                        double yp = yk == null ? 0.0 : yk;
-                        double pp = multOrDeltaForDimensions[k] ? xp * yp :
-                                1 - Math.abs( xp - yp );
-                        int priority = dimensionPriorities[k];
-                        maxProbs[priority] = Math.max(maxProbs[priority],pp);
-                    }
-                }
-
-                if( averageFootnessMode ) {
-                    currentSimilarity += Math.sqrt(d);
-                } else {
-                    double sum = 0.0;
-                    for (int k = 0; k < maxProbs.length; k++) {
-                        double maxProb = maxProbs[k];
-                        sum += maxProb * dimensionProbsMask[k];
-                    }
-                    currentSimilarity += sum / sumProbForDimensionProbsMask;
-                }
-
-                i++;
-                j++;
-            }
-
-            currentSimilarity /= cntx;
-            if( !averageFootnessMode ) {
-                currentSimilarity = 1 - currentSimilarity;
-            }
-
-            if( currentSimilarity < minSimilarity ) {
-                minSimilarity = currentSimilarity;
-                shiftOfMin =    l;
-            }
-
-            cnty--;
-            l++;
-        }
-
-        return new DistanceWithShift(minSimilarity,shiftOfMin);
-    }
-
-    public void setDimensionInfo(int numberOfPriorities, int[] dimensionPriorities,boolean[] multOrDeltaForDimensions) {
-        this.dimensionPriorities = dimensionPriorities;
-        this.multOrDeltaForDimensions = multOrDeltaForDimensions;
-        this.numberOfPriorities = numberOfPriorities;
-
-        dimensionProbsMask = new double[numberOfPriorities];
-
-        for(int i = 0; i < dimensionProbsMask.length; i++) {
-            dimensionProbsMask[i] = 0.0;
-        }
-
-        for(int i = 0; i < sourceAverage.size(); i++) {
-            int priority = dimensionPriorities[i];
-            boolean multOrDelta = multOrDeltaForDimensions[i];
-            Double p =  multOrDelta ? sourceAverage.get(i) : 1.0;
-            double prevP = dimensionProbsMask[priority];
-            dimensionProbsMask[priority] = Math.max((p==null ? 0.0 : p),prevP);
-        }
-
-        // TODO, то, что не учитываем здесь последнее измерение это костыль,
-        // избавиться от него через multOrDeltaForProrities
-
-        //Костыль!!!!
-
-        dimensionProbsMask[2] *= (1 - dimensionProbsMask[0]);
-        dimensionProbsMask[1] *= (1 - dimensionProbsMask[0]);
-        dimensionProbsMask[2] *= (1 - dimensionProbsMask[1]);
-        dimensionProbsMask[3] *= 0.2;
-
-        sumProbForDimensionProbsMask = 0.0;
-        for (double p : dimensionProbsMask) {
-            sumProbForDimensionProbsMask += p;
-        }
-
-        if( sumProbForDimensionProbsMask < 0.0001 ) { //защита
-            sumProbForDimensionProbsMask = 0.01;
-        }
+        return shiftOfValuable;
     }
 }
