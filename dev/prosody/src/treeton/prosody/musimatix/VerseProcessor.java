@@ -17,6 +17,7 @@ import treeton.core.config.context.resources.xmlimpl.ResourcesContextXMLImpl;
 import treeton.core.config.context.treenotations.TreenotationsContext;
 import treeton.core.model.TrnType;
 import treeton.core.util.ProgressListener;
+import treeton.prosody.StressDescription;
 import treeton.prosody.SyllableInfo;
 import treeton.prosody.VerseProcessingUtilities;
 import treeton.prosody.mdlcompiler.fsm.Meter;
@@ -162,7 +163,6 @@ public class VerseProcessor {
 
             Collection<Meter> meters = probsCounter.getMeters();
             this.spacePerMeter = spacePerMeter == -1 ? 3 : spacePerMeter;
-            averageFootnessMode = spacePerMeter == -1;
 
             metricVectorDimension = meters.size() * this.spacePerMeter + MeterProbabilitiesCounter.NUMBER_OF_CADENCES_TYPES;
             meterInsideVectorOrder = new HashMap<>();
@@ -258,18 +258,6 @@ public class VerseProcessor {
             throw new RuntimeException("Error during processing lyrics: " + sb.toString(), e);
         }
 
-        Map<Integer, TreenotationImpl> syllablesMap = new HashMap<>();
-        TypeIteratorInterface syllablesIterator = storage.typeIterator(syllableTp, storage.firstToken(), storage.lastToken());
-
-        while (syllablesIterator.hasNext()) {
-            TreenotationImpl syllable = (TreenotationImpl) syllablesIterator.next();
-            syllablesMap.put(syllable.getStartNumerator(), syllable);
-        }
-
-        HashSet<Treenotation> forceStressed = null;
-        HashSet<Treenotation> forceUnstressed = null;
-        Iterator<StressDescription> externalStressesIterator = externalStressInfo == null ? null : externalStressInfo.iterator();
-
         int offset = 0;
         for (String verse : verses) {
             if (verse.trim().isEmpty()) {
@@ -287,46 +275,17 @@ public class VerseProcessor {
 
             storage.add(TreetonFactory.newTreenotation(start, end, verseTp));
 
-            if (externalStressesIterator != null) {
-                assert externalStressesIterator.hasNext();
-
-                forceStressed = new HashSet<>();
-                forceUnstressed = new HashSet<>();
-
-                StressDescription externalStressDescription = externalStressesIterator.next();
-
-                for (SyllableInfo syllableInfo : externalStressDescription) {
-                    if (syllableInfo.stressStatus == SyllableInfo.StressStatus.AMBIGUOUS) {
-                        continue;
-                    }
-
-                    TreenotationImpl syllable = syllablesMap.get(offset + syllableInfo.startOffset);
-                    if (syllable == null) { //TODO надо бы варнинги куда-то писать
-                        continue;
-                    }
-                    int length = syllable.getEndNumerator() - syllable.getStartNumerator();
-                    if (length != syllableInfo.length) { //TODO надо бы варнинги куда-то писать
-                        continue;
-                    }
-
-                    TreenotationImpl accVariant = (TreenotationImpl) TreetonFactory.newSyntaxTreenotation(storage, syllable.getStartToken(),
-                            syllable.getEndToken(), accVariantTp);
-                    accVariant.put(userVariantFeatureId, Boolean.TRUE);
-                    accVariant.addTree(new TreenotationImpl.Node(
-                            syllableInfo.stressStatus == SyllableInfo.StressStatus.STRESSED ?
-                                    TreenotationImpl.PARENT_CONNECTION_STRONG :
-                                    TreenotationImpl.PARENT_CONNECTION_WEAK, syllable));
-                    if (syllableInfo.stressStatus == SyllableInfo.StressStatus.STRESSED) {
-                        forceStressed.add(syllable);
-                    } else {
-                        forceUnstressed.add(syllable);
-                    }
-
-                    storage.add(accVariant);
-                }
-            }
-
             offset += verse.length() + 1;
+        }
+
+        HashSet<Treenotation> forceStressed = null;
+        HashSet<Treenotation> forceUnstressed = null;
+
+        if(externalStressInfo != null) {
+            forceStressed = new HashSet<>();
+            forceUnstressed = new HashSet<>();
+
+            verseProcessingUtilities.injectSyllableInfo(storage, forceStressed, forceUnstressed, externalStressInfo);
         }
 
         HashMap<String, List<double[]>> meterProbabilities = new HashMap<>();
@@ -392,75 +351,48 @@ public class VerseProcessor {
                 Vector<Double> metricVector = new Vector<>();
                 metricVector.setSize(metricVectorDimension);
 
-                if (averageFootnessMode) {
-                    for( Meter meter : probsCounter.getMeters() ) {
-                        String meterName = meter.getName();
-                        List<double[]> probabilities = meterProbabilities.get(meterName);
+                for ( Meter meter : probsCounter.getMeters() ) {
+                    String meterName = meter.getName();
+                    List<double[]> probabilities = meterProbabilities.get(meterName);
 
-                        Integer place = meterInsideVectorOrder.get(meterName);
-                        assert place != null;
+                    Integer place = meterInsideVectorOrder.get(meterName);
+                    assert place != null;
 
-                        for (int footness = 0; footness < probabilities.size(); footness++) {
-                            double[] probabilitiesForAllVerses = probabilities.get(footness);
-                            if (probabilitiesForAllVerses == null || verseIndex >= probabilitiesForAllVerses.length) {
-                                continue;
-                            }
-
-                            double p = probabilitiesForAllVerses[verseIndex];
-
-                            Double oldp = metricVector.get(place);
-                            if (oldp == null || p >= oldp) {
-                                metricVector.set(place, p);
-                                metricVector.set(place + 1, (double) footness);
-                                metricVector.set(place + 2, null); // внутри одной строки разброс нулевой
-                            }
-                        }
-                    }
-                } else {
-                    for ( Meter meter : probsCounter.getMeters() ) {
-                        String meterName = meter.getName();
-                        List<double[]> probabilities = meterProbabilities.get(meterName);
-
-                        Integer place = meterInsideVectorOrder.get(meterName);
-                        assert place != null;
-
-                        for (int footness = 0; footness < spacePerMeter - 1 &&
-                                footness < probabilities.size(); footness++) {
-                            double[] probabilitiesForAllVerses = probabilities.get(footness);
-                            double p = (probabilitiesForAllVerses == null || verseIndex >= probabilitiesForAllVerses.length) ? 0.0 :
-                                    probabilitiesForAllVerses[verseIndex];
-
-                            metricVector.set(place + footness, p);
-                        }
-
-                        double tail = 0;
-                        int nonNullCount = 0;
-
-                        for (int footness = spacePerMeter - 1; footness < probabilities.size(); footness++) {
-                            double[] probabilitiesForAllVerses = probabilities.get(footness);
-                            if (probabilitiesForAllVerses == null || verseIndex >= probabilitiesForAllVerses.length) {
-                                continue;
-                            }
-
-                            tail += probabilitiesForAllVerses[verseIndex];
-                            nonNullCount++;
-                        }
-
-                        if (tail > 0 && nonNullCount > 0) {
-                            metricVector.set(place + spacePerMeter - 1, tail / nonNullCount);
-                        }
-                    }
-
-                    for( int i = 0; i < MeterProbabilitiesCounter.NUMBER_OF_CADENCES_TYPES; i++) {
-                        List<double[]> probabilities = meterProbabilities.get(MeterProbabilitiesCounter.Cadences[i]);
-
-                        double[] probabilitiesForAllVerses = probabilities.get(0);
+                    for (int footness = 0; footness < spacePerMeter - 1 &&
+                            footness < probabilities.size(); footness++) {
+                        double[] probabilitiesForAllVerses = probabilities.get(footness);
                         double p = (probabilitiesForAllVerses == null || verseIndex >= probabilitiesForAllVerses.length) ? 0.0 :
                                 probabilitiesForAllVerses[verseIndex];
 
-                        metricVector.set(metricVectorDimension - 3 + i, p);
+                        metricVector.set(place + footness, p);
                     }
 
+                    double tail = 0;
+                    int nonNullCount = 0;
+
+                    for (int footness = spacePerMeter - 1; footness < probabilities.size(); footness++) {
+                        double[] probabilitiesForAllVerses = probabilities.get(footness);
+                        if (probabilitiesForAllVerses == null || verseIndex >= probabilitiesForAllVerses.length) {
+                            continue;
+                        }
+
+                        tail += probabilitiesForAllVerses[verseIndex];
+                        nonNullCount++;
+                    }
+
+                    if (tail > 0 && nonNullCount > 0) {
+                        metricVector.set(place + spacePerMeter - 1, tail / nonNullCount);
+                    }
+                }
+
+                for( int i = 0; i < MeterProbabilitiesCounter.NUMBER_OF_CADENCES_TYPES; i++) {
+                    List<double[]> probabilities = meterProbabilities.get(MeterProbabilitiesCounter.Cadences[i]);
+
+                    double[] probabilitiesForAllVerses = probabilities.get(0);
+                    double p = (probabilitiesForAllVerses == null || verseIndex >= probabilitiesForAllVerses.length) ? 0.0 :
+                            probabilitiesForAllVerses[verseIndex];
+
+                    metricVector.set(metricVectorDimension - 3 + i, p);
                 }
 
                 result.add(new VerseDescription(metricVector, verseProcessingUtilities.generateSyllableInfo(storage, forceStressed, forceUnstressed, verseTrn), fragmentIds == null ? -1 : fragmentIds.get(verseIndex)));
@@ -474,7 +406,6 @@ public class VerseProcessor {
     private MeterProbabilitiesCounter probsCounter;
     private int metricVectorDimension;
     private int spacePerMeter;
-    private boolean averageFootnessMode;
     private Map<String, Integer> meterInsideVectorOrder;
     // Пока-что отказались идеи априорной дифференциации различных шаблонов
     //private Map<String,Double> meterStrength;
@@ -516,141 +447,6 @@ public class VerseProcessor {
         sb.append(" )");
 
         return sb.toString();
-    }
-
-    private static String locateUserAccentMarkup(String verse, ArrayList<Integer> stressPlaces, ArrayList<Pair<Integer, Integer>> unstressedZones) {
-        StringBuilder sb = new StringBuilder();
-
-        for (int i = 0; i < verse.length(); i++) {
-            char c = verse.charAt(i);
-
-            if (c == '{') {
-                int j = i + 1;
-                for (; j < verse.length(); j++) {
-                    c = verse.charAt(j);
-                    if (c == '}') {
-                        break;
-                    }
-                }
-                if (j == verse.length()) {
-                    throw new RuntimeException("Unclosed '{' in the input file, verse" + verse);
-                }
-
-                String syl = verse.substring(i + 1, j);
-                int sylPlace = syl.indexOf('\'');
-                if (sylPlace == -1) {
-                    unstressedZones.add(new Pair<>(sb.length(), sb.length() + syl.length()));
-                    sb.append(syl);
-                    i = j;
-                } else if (sylPlace == 0) {
-                    throw new RuntimeException("Accent sign right after '{', verse" + verse);
-                } else {
-                    if (!Character.isLetter(syl.charAt(sylPlace - 1))) {
-                        throw new RuntimeException("Accent sign not after letter, verse" + verse);
-                    }
-                    stressPlaces.add(sb.length() + sylPlace - 1);
-                    sb.append(syl.substring(0, sylPlace)).append(syl.substring(sylPlace + 1));
-                    i = j;
-                }
-            } else if (c == '\\') {
-                i++;
-                if (i == verse.length()) {
-                    break;
-                }
-                sb.append(verse.charAt(i));
-            } else {
-                sb.append(c);
-            }
-        }
-
-        return sb.toString();
-    }
-
-    public void parseFormattedVerses(ArrayList<String> formattedInput, ArrayList<String> plainOutput, ArrayList<StressDescription> stressDescriptions) throws Exception {
-        TreenotationsContext trnContext = ContextConfiguration.trnsManager().get("Common.Russian.Prosody");
-        ResourcesContextXMLImpl resContext = (ResourcesContextXMLImpl)
-                ContextConfiguration.resourcesManager().get(ContextUtil.getFullName(trnContext));
-
-        ResourceChain syllabizatorChain = new ResourceUtils().createResourceChain(resContext.getResourceChainModel("OnlySyllabizatorChain", true));
-        syllabizatorChain.initialize(trnContext);
-
-        TreenotationStorageImpl storage = (TreenotationStorageImpl) TreetonFactory.newTreenotationStorage(trnContext);
-        TrnType syllableTp = trnContext.getType("Syllable");
-
-        for (String verse : formattedInput) {
-            ArrayList<Integer> stressPlaces = new ArrayList<>();
-            ArrayList<Pair<Integer, Integer>> unstressedZones = new ArrayList<>();
-
-            String pureString = locateUserAccentMarkup(verse, stressPlaces, unstressedZones);
-
-            plainOutput.add(pureString);
-
-            syllabizatorChain.execute(pureString, storage, new HashMap<>());
-
-            Map<Integer, TreenotationImpl> syllablesCoverage = new HashMap<>();
-
-            TypeIteratorInterface syllablesIterator = storage.typeIterator(syllableTp, storage.firstToken(), storage.lastToken());
-
-            while (syllablesIterator.hasNext()) {
-                TreenotationImpl syllable = (TreenotationImpl) syllablesIterator.next();
-
-                for (int i = syllable.getStartNumerator(); i < syllable.getEndNumerator(); i++) {
-                    syllablesCoverage.put(i, syllable);
-                }
-            }
-
-            HashSet<TreenotationImpl> userStressedSyllables = new HashSet<>();
-
-            for (Integer stressPlace : stressPlaces) {
-                TreenotationImpl syllable = syllablesCoverage.get(stressPlace);
-
-                if (syllable == null) {
-                    throw new RuntimeException("No syllable for position " + stressPlace + ", verse " + verse);
-                }
-
-                userStressedSyllables.add(syllable);
-            }
-
-            HashSet<TreenotationImpl> userUnstressedSyllables = new HashSet<>();
-
-            for (Pair<Integer, Integer> unstressedZone : unstressedZones) {
-                boolean found = false;
-                for (int j = unstressedZone.fst; j < unstressedZone.snd; j++) {
-                    TreenotationImpl syllable = syllablesCoverage.get(j);
-
-                    if (syllable == null) {
-                        continue;
-                    }
-
-                    found = true;
-
-                    if (userStressedSyllables.contains(syllable)) {
-                        throw new RuntimeException("Ambiguous user accent markup, syllable " + syllable.getText() + ", verse " + verse);
-                    }
-
-                    userUnstressedSyllables.add(syllable);
-                }
-
-                if (!found) {
-                    System.err.println("No syllable for zone [" + unstressedZone.fst + "," + unstressedZone.snd + "], verse " + verse);
-                    return;
-                }
-            }
-
-            ArrayList<SyllableInfo> sylInfo = new ArrayList<>();
-
-            for (TreenotationImpl syllable : userStressedSyllables) {
-                sylInfo.add(new SyllableInfo(syllable.getStartNumerator(),
-                        syllable.getEndNumerator() - syllable.getStartNumerator(), SyllableInfo.StressStatus.STRESSED));
-            }
-
-            for (TreenotationImpl syllable : userUnstressedSyllables) {
-                sylInfo.add(new SyllableInfo(syllable.getStartNumerator(),
-                        syllable.getEndNumerator() - syllable.getStartNumerator(), SyllableInfo.StressStatus.UNSTRESSED));
-            }
-
-            stressDescriptions.add(new StressDescription(sylInfo));
-        }
     }
 
     void parseRawSyllables(ArrayList<String> rawSyllableStrings, ArrayList<String> plainOutput, ArrayList<StressDescription> stressDescriptions) throws Exception {
@@ -724,17 +520,7 @@ public class VerseProcessor {
 
             for (j = 0; j < metricVectorDimension; j++) {
                 Double average = averageVector.get(j);
-                Double current;
-
-                if (averageFootnessMode && (j % 3) == 2 && j < metricVectorDimension - MeterProbabilitiesCounter.NUMBER_OF_CADENCES_TYPES ) {
-                    current = verseDescription.metricVector.get(j - 2);
-                    if (current != null) {
-                        current *= verseDescription.metricVector.get(j - 1);
-                    }
-                } else {
-                    current = verseDescription.metricVector.get(j);
-                }
-
+                Double current = verseDescription.metricVector.get(j);
                 Double newValue;
 
                 if (average == null) {
@@ -763,84 +549,6 @@ public class VerseProcessor {
             aDouble = aDouble / numberOfNonEmptyLines;
             averageVector.set(i, (!filterSmallProbabilities || aDouble > 0.5) ? aDouble : null);
         }
-
-        if (averageFootnessMode) {
-            // в каждом третьем измерении расчитаем отклонения
-
-            Vector<Double> variances = new Vector<>();
-            variances.setSize(metricVectorDimension - MeterProbabilitiesCounter.NUMBER_OF_CADENCES_TYPES);
-            numberOfNonEmptyLines = 0;
-            for (VerseDescription verseDescription : verseDescriptions) {
-                if (verseDescription.metricVector == null) {
-                    continue;
-                }
-
-                int i = 0;
-                for (; i < metricVectorDimension - MeterProbabilitiesCounter.NUMBER_OF_CADENCES_TYPES; i++) {
-                    Double current = verseDescription.metricVector.get(i);
-                    if (current != null && current != 0.0) {
-                        break;
-                    }
-                }
-
-                if (i == metricVectorDimension) {
-                    continue;
-                }
-
-                if (numberOfVersesForAverageVector != -1 && numberOfNonEmptyLines == numberOfVersesForAverageVector) {
-                    break;
-                }
-
-                numberOfNonEmptyLines++;
-
-                for (i = 2; i < metricVectorDimension - MeterProbabilitiesCounter.NUMBER_OF_CADENCES_TYPES; i += 3) {
-                    Double averageFootness = averageVector.get(i);
-                    if (averageFootness == null) {
-                        continue;
-                    }
-
-                    Double currentMeter = verseDescription.metricVector.get(i - 2);
-                    Double currentFootness;
-                    if (currentMeter == null) {
-                        currentFootness = 0.0;
-                    } else {
-                        currentFootness = currentMeter * verseDescription.metricVector.get(i - 1);
-                    }
-
-                    Double averageVariance = variances.get(i);
-                    Double newValue;
-
-                    if (averageVariance == null) {
-                        newValue = (currentFootness - averageFootness) * (currentFootness - averageFootness);
-                    } else {
-                        newValue = averageVariance + (currentFootness - averageFootness) * (currentFootness - averageFootness);
-                    }
-
-                    variances.set(i, newValue);
-                }
-            }
-
-            for (int i = 0; i < metricVectorDimension - MeterProbabilitiesCounter.NUMBER_OF_CADENCES_TYPES; i++) {
-                int x = i % 3;
-
-                if (x == 0) {
-                    Double aDouble = averageVector.get(i);
-                    averageVector.set(i, (aDouble == null ? null : aDouble * meterMult));
-                } else if (x == 1) {
-                    Double aDouble = averageVector.get(i);
-                    averageVector.set(i, (aDouble == null ? null : aDouble * footnessMult));
-                } else {
-                    Double aDouble = variances.get(i);
-                    if (aDouble == null) {
-                        averageVector.set(i, null);
-                    } else {
-                        aDouble = aDouble / numberOfNonEmptyLines;
-                        averageVector.set(i, aDouble * footnessVarianceMult);
-                    }
-                }
-            }
-        }
-
         return averageVector;
     }
 
@@ -903,34 +611,39 @@ public class VerseProcessor {
         return sb.toString();
     }
 
-    public PreciseVerseDistanceCounter createVerseDistanceCounter(ArrayList<VerseDescription> verseDescriptions, int firstLineIndex) {
-        PreciseVerseDistanceCounter result = new PreciseVerseDistanceCounter(verseDescriptions, countAverage(verseDescriptions,firstLineIndex), firstLineIndex, averageFootnessMode, meterMult, footnessMult);
-        if( !averageFootnessMode ) {
-            int[] dimensionPriorities = new int[metricVectorDimension];
-            boolean[] multOrDeltaForDimensions = new boolean[metricVectorDimension];
+    public PreciseVerseDistanceCounter createVerseDistanceCounter(ArrayList<VerseDescription> verseDescriptions,
+                                                                  int firstLineIndex, double[] regressionCoefficients)
+    {
 
-            Collection<Meter> meters = probsCounter.getMeters();
-            ArrayList<Meter> metersArray = new ArrayList<>( meters );
+        int[] dimensionPriorities = new int[metricVectorDimension];
+        PreciseVerseDistanceCounter.DimensionOperation[] dimensionOperations =
+                new PreciseVerseDistanceCounter.DimensionOperation[metricVectorDimension];
+        Collection<Meter> meters = probsCounter.getMeters();
+        ArrayList<Meter> metersArray = new ArrayList<>( meters );
 
-            for (Meter meter : metersArray) {
-                Integer offset = meterInsideVectorOrder.get(meter.getName());
-                for (int j = 0; j < spacePerMeter; j++) {
-                    int priority = meter.getPriority();
-                    assert priority >= 0;
-                    dimensionPriorities[offset+j]= priority;
-                    multOrDeltaForDimensions[offset+j]=true;
-                }
+        // Все измерения, кроме 3 последних - типы метра: ямб, хорей и т.д.
+        // Их "вероятности" между строчками мы будем потом перемножать.
+        // В зависимости от приоритета потом им будут проставлены разные веса.
+        for( Meter meter : metersArray ) {
+            Integer offset = meterInsideVectorOrder.get( meter.getName() );
+            for (int j = 0; j < spacePerMeter; j++) {
+                int priority = meter.getPriority();
+                assert priority >= 0;
+                dimensionPriorities[offset+j] = priority;
+                dimensionOperations[offset+j] = PreciseVerseDistanceCounter.DimensionOperation.Multiplication;
             }
-
-            dimensionPriorities[metricVectorDimension-3]=probsCounter.getMaxMeterPriority()+1;
-            dimensionPriorities[metricVectorDimension-2]=probsCounter.getMaxMeterPriority()+1;
-            dimensionPriorities[metricVectorDimension-1]=probsCounter.getMaxMeterPriority()+1;
-            multOrDeltaForDimensions[metricVectorDimension-3]=false;
-            multOrDeltaForDimensions[metricVectorDimension-2]=false;
-            multOrDeltaForDimensions[metricVectorDimension-1]=false;
-
-            result.setDimensionInfo(probsCounter.getMaxMeterPriority()+2,dimensionPriorities,multOrDeltaForDimensions);
         }
-        return result;
+
+        // Последние 3 измерения - тип рифмы, у них отличается способ сложения.
+        dimensionPriorities[metricVectorDimension-3] = probsCounter.getMaxMeterPriority() + 1;
+        dimensionPriorities[metricVectorDimension-2] = probsCounter.getMaxMeterPriority() + 1;
+        dimensionPriorities[metricVectorDimension-1] = probsCounter.getMaxMeterPriority() + 1;
+        dimensionOperations[metricVectorDimension-3] = PreciseVerseDistanceCounter.DimensionOperation.Delta;
+        dimensionOperations[metricVectorDimension-2] = PreciseVerseDistanceCounter.DimensionOperation.Delta;
+        dimensionOperations[metricVectorDimension-1] = PreciseVerseDistanceCounter.DimensionOperation.Delta;
+
+        return new PreciseVerseDistanceCounter( verseDescriptions, firstLineIndex,
+                probsCounter.getMaxMeterPriority()+2, dimensionPriorities,
+                dimensionOperations, regressionCoefficients );
     }
 }

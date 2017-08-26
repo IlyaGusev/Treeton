@@ -10,7 +10,9 @@ import treeton.core.config.BasicConfiguration;
 import treeton.core.config.context.ContextConfiguration;
 import treeton.core.config.context.ContextConfigurationProsodyImpl;
 import treeton.core.util.ObjectPair;
+import treeton.prosody.StressDescription;
 import treeton.prosody.SyllableInfo;
+import treeton.prosody.VerseProcessingUtilities;
 
 import java.io.*;
 import java.util.*;
@@ -56,7 +58,7 @@ public class VerseProcessingTool {
             }
         } else if( inputFormat == InputFormat.FORMATTED ) {
             try {
-                processor.parseFormattedVerses(formattedLyrics, plainLyrics, stressDescriptions);
+                VerseProcessingUtilities.parseFormattedVerses(formattedLyrics, plainLyrics, stressDescriptions);
             } catch (Exception e) {
                 System.err.println("Unable to parse formatted lyrics (file "+inputFile.getPath()+"): " + e.getMessage());
                 return null;
@@ -388,7 +390,7 @@ public class VerseProcessingTool {
         props.load(propsStream);
         propsStream.close();
 
-        InputFormat inputFormat = InputFormat.valueOf(props.getProperty("parseFormattedLyrics"));
+        InputFormat inputFormat = InputFormat.valueOf(props.getProperty("inputFormat"));
         HashSet<String> tagsWhereToSkipHeader = getTagsWhereToSkipHeader(props);
 
         VerseProcessor processor;
@@ -431,8 +433,20 @@ public class VerseProcessingTool {
                 continue;
             }
 
-            int queryFirstLineIndex = getFirstLineIndex(tagsWhereToSkipHeader,queryTags,queryPlainLyrics);
-            PreciseVerseDistanceCounter distanceCounter = processor.createVerseDistanceCounter(queryVerseDescriptions,queryFirstLineIndex);
+            double[] regressionCoefficients = new double[5];
+            for( int i = 0; i < regressionCoefficients.length; i++ ) {
+                regressionCoefficients[i] = 0.0;
+            }
+
+            String[] stringCoefs = props.getProperty("regressionCoefficients").split(";");
+            assert stringCoefs.length == regressionCoefficients.length;
+            for( int i = 0; i < stringCoefs.length; i++ ) {
+                regressionCoefficients[i] = Double.valueOf( stringCoefs[i] );
+            }
+
+            int queryFirstLineIndex = getFirstLineIndex(tagsWhereToSkipHeader, queryTags, queryPlainLyrics);
+            PreciseVerseDistanceCounter distanceCounter =
+                    processor.createVerseDistanceCounter(queryVerseDescriptions, queryFirstLineIndex, regressionCoefficients);
 
             Set<File> responseFileSet = pairsMap.get(queryFile);
 

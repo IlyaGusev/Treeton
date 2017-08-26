@@ -51,7 +51,7 @@ public class MetricIndex implements CorpusListener {
 
         try {
             mdlFileTimestamp = mdlFile.lastModified();
-            probsCounter = new MeterProbabilitiesCounter( corpus.getTrnContext(), mdlFile.getPath(), 1, 3, 3, 2, 23, false, 0.8, true);
+            probsCounter = new MeterProbabilitiesCounter( corpus.getTrnContext(), mdlFile.getPath(), 1, 3, 3, 2, 40, false, 0.8, true);
         } catch (Exception e) {
             e.printStackTrace();
             probsCounter = null;
@@ -173,7 +173,7 @@ public class MetricIndex implements CorpusListener {
 
         File newMdlFile = new File( rootPath, mdlRelativePath );
 
-        if( !newMdlFile.exists() ) {
+        if( !newMdlFile.exists() || newMdlFile.isDirectory()) {
             metricInfo.clear();
             probsCounter = null;
             mdlFile = null;
@@ -190,7 +190,7 @@ public class MetricIndex implements CorpusListener {
 
         try {
             mdlFileTimestamp = mdlFile.lastModified();
-            probsCounter = new MeterProbabilitiesCounter( corpus.getTrnContext(), mdlFile.getPath(), 1, 3, 2, 1, 23, false, 0.8, true);
+            probsCounter = new MeterProbabilitiesCounter( corpus.getTrnContext(), mdlFile.getPath(), 1, 3, 2, 1, 40, false, 0.8, true);
         } catch (Exception e) {
             e.printStackTrace();
             probsCounter = null;
@@ -208,7 +208,7 @@ public class MetricIndex implements CorpusListener {
             metricInfo.clear();
             try {
                 mdlFileTimestamp = mdlFile.lastModified();
-                probsCounter = new MeterProbabilitiesCounter( corpus.getTrnContext(), mdlFile.getPath(), 1, 3, 2, 1, 23, false, 0.8, true);
+                probsCounter = new MeterProbabilitiesCounter( corpus.getTrnContext(), mdlFile.getPath(), 1, 3, 2, 1, 40, false, 0.8, true);
             } catch (Exception e) {
                 e.printStackTrace();
                 probsCounter = null;

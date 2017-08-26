@@ -15,23 +15,23 @@ import treeton.core.model.TrnType;
 import java.util.*;
 
 public class AccentGenerator extends Resource {
-    Treenotation[] mappingArr;
-    TypeIteratorInterface stit;
-    TrnType morphTp;
-    TrnType syllTp;
-    TrnType accvarTp;
-    TrnType phonWordTp;
-    int ACCPL_feature;
-    int POS_feature;
-    int Klitik_feature;
-    int MorphArr_feature;
-    ArrayList<Treenotation> tarr;
+    private Treenotation[] mappingArr;
+    private TypeIteratorInterface stit;
+    private TrnType morphTp;
+    private TrnType syllTp;
+    private TrnType accvarTp;
+    private TrnType phonWordTp;
+    private int ACCPL_feature;
+    private int POS_feature;
+    private int Klitik_feature;
+    private int MorphArr_feature;
+    private ArrayList<Treenotation> tarr;
     private Set<TString> klitiks;
 
     protected String process(String text, TextMarkingStorage _storage, Map<String, Object> params) throws ExecutionException {
         TreenotationStorage storage = (TreenotationStorage) _storage;
         mappingArr = new Treenotation[200];
-        ArrayList<Treenotation> arr = new ArrayList<Treenotation>();
+        ArrayList<Treenotation> arr = new ArrayList<>();
         TypeIteratorInterface tit = storage.typeIterator(morphTp);
         stit = storage.typeIterator(syllTp);
 
@@ -61,7 +61,7 @@ public class AccentGenerator extends Resource {
         return null;
     }
 
-    protected void generateAccentVariants(TreenotationStorage storage, ArrayList<Treenotation> arr) {
+    private void generateAccentVariants(TreenotationStorage storage, ArrayList<Treenotation> arr) {
         Treenotation trn = arr.get(0);
         char[] form = trn.getText().toCharArray();
         ensureMappingCapacity(form);
@@ -227,7 +227,7 @@ public class AccentGenerator extends Resource {
             syllTp = getTrnContext().getType((String) getInitialParameters().get("Syllable_type"));
             phonWordTp = getTrnContext().getType((String) getInitialParameters().get("PhonWord_type"));
 
-            klitiks = new HashSet<TString>();
+            klitiks = new HashSet<>();
 
             List list = (List) getInitialParameters().get("klitik_POSes");
             if (list != null) {
@@ -239,7 +239,7 @@ public class AccentGenerator extends Resource {
             throw new ResourceInstantiationException("Error with model", e);
         }
 
-        tarr = new ArrayList<Treenotation>();
+        tarr = new ArrayList<>();
     }
 
     public void deInit() {
@@ -253,7 +253,7 @@ public class AccentGenerator extends Resource {
 
     public void processTerminated() {
         stit.reset(null, null, null, null);
-        tarr = new ArrayList<Treenotation>();
+        tarr = new ArrayList<>();
         mappingArr = null;
         stit = null;
     }
