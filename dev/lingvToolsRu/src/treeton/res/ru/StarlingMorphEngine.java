@@ -678,4 +678,8 @@ public class StarlingMorphEngine implements MorphInterface, GrammAndZindexLogger
     public StringToTrnMapperRuleStorage getLexMapper() {
         return lexMapper;
     }
+
+    public StringToTrnMapperRuleStorage getInflMapper() {
+        return inflMapper;
+    }
 }
