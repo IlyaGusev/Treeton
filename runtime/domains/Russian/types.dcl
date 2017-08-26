@@ -2143,7 +2143,7 @@ type UD_Gramm {
         feature Aspect {
             viewname {}
             description {}
-            value Imp {
+            value Imperf {
                 viewname {}
                 description {}
             }
@@ -2344,6 +2344,17 @@ type UD_Gramm {
             }
 	}
 
+	feature additional_gender {
+            viewname {}
+            description {}
+            value MF {
+                viewname {
+			мужско-женские слова (типа "балда")
+		}
+                description {}
+            }
+	}
+
 	feature additional {
             viewname {}
             description {}
@@ -2374,12 +2385,6 @@ type UD_Gramm {
             value ADJI {
                 viewname {
 			адъективное склонение существительных (типа "операционная")
-		}
-                description {}
-            }
-            value MF {
-                viewname {
-			мужско-женские слова (типа "балда")
 		}
                 description {}
             }
@@ -2419,7 +2424,25 @@ type UD_Gramm {
 		}
                 description {}
             }
+
+            value adprep {
+                viewname {
+			Специально для местоимения "он" - маркер форм, которые употребляются с предлогом
+		}
+                description {}
+            }
         }
+
+	feature proper_name {
+            viewname {}
+            description {}
+            value proper {
+                viewname {
+			Собственное имя (2-я часть словаря Зализняка)
+		}
+                description {}
+            }
+	}
 
 	feature status {
             viewname {}

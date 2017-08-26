@@ -13,7 +13,7 @@
 //   предл _и_ послелог
 // }
 
-<([(][^)]*[)] +)?предл.*> -> (POS:=ADP;additional:=INVAR;)
+<([(][^)]*[)]  *)?предл.*> -> (POS:=ADP;additional:=INVAR;)
 
 // предик {
 //   пред : бо'г ве'сть; не бо'г ве'сть
@@ -46,8 +46,8 @@
 //   част; вводн % на аво'сь
 //   вводн
 // }
-<([(][^)]*[)] +)?(союз; +)?част.*> -> (POS:=PART;additional:=INVAR;)
-<([(][^)]*[)] +)?(част; +)?союз.*> -> (POS:=CCONJ;status:=unsure;additional:=INVAR;)
+<([(][^)]*[)]  *)?(союз;  *)?част.*> -> (POS:=PART;additional:=INVAR;)
+<([(][^)]*[)]  *)?(част;  *)?союз.*> -> (POS:=CCONJ;status:=unsure;additional:=INVAR;)
 <(._часто без удар _. )?вводн.*> -> (POS:=ADV;Degree:=Pos;additional:=PAR;additional:=INVAR;)
 
 
@@ -83,7 +83,7 @@
 //   н; предик (_о боли_)
 // }
 
-<([(][^)]*[)] +)?н(( |;|:).*)?> -> (POS:=ADV;Degree:=Pos;additional:=INVAR;)
+<([(][^)]*[)]  *)?н(( |;|:).*)?> -> (POS:=ADV;Degree:=Pos;additional:=INVAR;)
 
 // ж {
 //   ж 0
@@ -285,8 +285,8 @@
 // }
 
 <ж 0.*> -> (POS:=NOUN;Gender:=Fem;Animacy:=Inan;additional:=INVAR;)
-<ж(,)? [1-9][0-9]*.*> -> (POS:=NOUN;Gender:=Fem;Animacy:=Inan;)
-<мн +ж( |,).*> -> (POS:=NOUN;Gender:=Fem;Animacy:=Inan;additional:=PLT;)
+<ж(,)? [123456789]([0123456789])*.*> -> (POS:=NOUN;Gender:=Fem;Animacy:=Inan;)
+<мн  *ж( |,).*> -> (POS:=NOUN;Gender:=Fem;Animacy:=Inan;additional:=PLT;)
 
 // ж мс {
 //   ж мс 6*а
@@ -358,8 +358,8 @@
 // }
 
 <жо 0.*> -> (POS:=NOUN;Gender:=Fem;Animacy:=Anim;additional:=INVAR;)
-<жо [1-9][0-9]*.*> -> (POS:=NOUN;Gender:=Fem;Animacy:=Anim;)
-<мн +жо.*> -> (POS:=NOUN;Gender:=Fem;Animacy:=Anim;additional:=PLT;)
+<жо [123456789]([0123456789])*.*> -> (POS:=NOUN;Gender:=Fem;Animacy:=Anim;)
+<мн  *жо.*> -> (POS:=NOUN;Gender:=Fem;Animacy:=Anim;additional:=PLT;)
 
 // artificial combination
 <жо мс.*> -> (POS:=NOUN;Gender:=Fem;Animacy:=Anim;additional:=PRN;)
@@ -712,8 +712,8 @@
 // }
 
 <м 0.*> -> (POS:=NOUN;Gender:=Masc;Animacy:=Inan;additional:=INVAR;)
-<м(,)? [1-9][0-9]*.*> -> (POS:=NOUN;Gender:=Masc;Animacy:=Inan;)
-<мн +м( |,).*> -> (POS:=NOUN;Gender:=Masc;Animacy:=Inan;additional:=PLT;)
+<м( (ж|с))?(,)? [123456789]([0123456789])*.*> -> (POS:=NOUN;Gender:=Masc;Animacy:=Inan;)
+<мн  *м( |,).*> -> (POS:=NOUN;Gender:=Masc;Animacy:=Inan;additional:=PLT;)
 
 <м мс.*> -> (POS:=NOUN;Gender:=Masc;Animacy:=Inan;additional:=PRN;)
 
@@ -728,7 +728,7 @@
 //   мн неод п 1а (_в шахматах, шашках: один из двух наборов фигур_)
 // }
 
-<мн +неод.*> -> (POS:=NOUN;Gender:=Masc;Animacy:=Inan;additional:=PLT;)
+<мн  *неод.*> -> (POS:=NOUN;Gender:=Masc;Animacy:=Inan;additional:=PLT;)
 
 // мн одуш {
 //   мн одуш п 1а (_в шахматах, шашках: одна из двух участвующих в игре сторон_)
@@ -737,7 +737,7 @@
 //   мн одуш п 2а
 // }
 
-<мн +одуш.*> -> (POS:=NOUN;Gender:=Masc;Animacy:=Anim;additional:=PLT;)
+<мн  *одуш.*> -> (POS:=NOUN;Gender:=Masc;Animacy:=Anim;additional:=PLT;)
 
 // мн с {
 //   мн с 1а
@@ -747,14 +747,14 @@
 //   мн с 6*а"2" (_собир_)
 // }
 
-<мн +с( |,).*> -> (POS:=NOUN;Gender:=Neut;Animacy:=Inan;additional:=PLT;)
+<мн  *с( |,).*> -> (POS:=NOUN;Gender:=Neut;Animacy:=Inan;additional:=PLT;)
 
 
 // мн со {
 //   мн со 1а, #3
 // }
 
-<мн +со.*> -> (POS:=NOUN;Gender:=Neut;Animacy:=Anim;additional:=PLT;)
+<мн  *со.*> -> (POS:=NOUN;Gender:=Neut;Animacy:=Anim;additional:=PLT;)
 
 // мо {
 //   мо 0 [//мсье"]
@@ -880,8 +880,8 @@
 // }
 
 <мо 0.*> -> (POS:=NOUN;Gender:=Masc;Animacy:=Anim;additional:=INVAR;)
-<мо(,)? [1-9][0-9]*.*> -> (POS:=NOUN;Gender:=Masc;Animacy:=Anim;)
-<мн +мо.*> -> (POS:=NOUN;Gender:=Masc;Animacy:=Anim;additional:=PLT;)
+<мо( (ж|с)о)?(,)? [123456789]([0123456789])*.*> -> (POS:=NOUN;Gender:=Masc;Animacy:=Anim;)
+<мн  *мо.*> -> (POS:=NOUN;Gender:=Masc;Animacy:=Anim;additional:=PLT;)
 
 // мо мс {
 //   мо мс 6*а
@@ -934,7 +934,8 @@
 //   мо-жо 5а
 // }
 
-<мо-жо.*> -> (POS:=NOUN;Gender:=Masc;Animacy:=Anim;additional:=MF;)
+<мо-жо 0.*> -> (POS:=NOUN;Gender:=Masc;Animacy:=Anim;additional_gender:=MF;additional:=INVAR;)
+<мо-жо [123456789]([0123456789])*.*> -> (POS:=NOUN;Gender:=Masc;Animacy:=Anim;additional_gender:=MF;)
 
 // мп {
 //   мп Nsm,Asim ва'ш Nsn,Asn ва'ше Gsm,Gsn,Asam ва'шего Dsm,Dsn ва'шему Ism,Isn,Dp ва'шим Lsm,Lsn ва'шем Nsf ва'ша Gsf,Dsf,Isf,Lsf ва'шей Asf ва'шу Isf ва'шею Np,Api ва'ши Gp,Apa,Lp ва'ших Ip ва'шими
@@ -1279,7 +1280,7 @@
 //   нсв, 4с//4в"8"
 // }
 
-<нсв(,)? [^н].*> -> (POS:=VERB;Aspect:=Imp;TRANS:=vt;)
+<нсв(,)? [^н].*> -> (POS:=VERB;Aspect:=Imperf;TRANS:=vt;)
 
 // нсв нп {
 //   нсв нп 12а
@@ -1398,7 +1399,7 @@
 //   нсв нп @в: _наст_ реву', -е"т; _прош_ реве'л, -а
 // }
 
-<нсв нп( |,).*> -> (POS:=VERB;Aspect:=Imp;TRANS:=vi;)
+<нсв нп( |,).*> -> (POS:=VERB;Aspect:=Imperf;TRANS:=vi;)
 
 // п {
 //   п 0
@@ -1632,8 +1633,8 @@
 //   п мс 6*а
 // }
 
-<п 0.*> -> (POS:=ADJ;Degree:=Pos;additional:=INVAR;)
-<п(,)? [^0].*> -> (POS:=ADJ;Degree:=Pos;)
+<п 0.*> -> (POS:=ADJ;additional:=INVAR;)
+<п(,)? [^0].*> -> (POS:=ADJ;)
 
 // с {
 //   с 0
@@ -1727,7 +1728,7 @@
 // }
 
 <с 0.*> -> (POS:=N;Gender:=Neut;Animacy:=Inan;additional:=INVAR;)
-<с(,)? [1-9][0-9]*.*> -> (POS:=N;Gender:=Neut;Animacy:=Inan;)
+<с(,)? [123456789]([0123456789])*.*> -> (POS:=N;Gender:=Neut;Animacy:=Inan;)
 
 // с мс {
 //   с мс 6*а
@@ -2128,7 +2129,7 @@
 //   св, 9в/с''//9в, е" @ _буд_ обопр у'сь, -е"тся $II(опира'ться)
 // }
 
-<(._.*_. )?св( |, )[0-9@].*> -> (POS:=VERB;Aspect:=Perf;TRANS:=vt;)
+<св( |, )[0123456789@].*> -> (POS:=VERB;Aspect:=Perf;TRANS:=vt;)
 
 
 // св нп {
@@ -2267,7 +2268,7 @@
 // }
 
 <со 0.*> -> (POS:=NOUN;Gender:=Neut;Animacy:=Anim;additional:=INVAR;)
-<со(,)? [1-9][0-9]*.*> -> (POS:=NOUN;Gender:=Neut;Animacy:=Anim;)
+<со(,)? [123456789]([0123456789])*.*> -> (POS:=NOUN;Gender:=Neut;Animacy:=Anim;)
 <со мс.*> -> (POS:=NOUN;Gender:=Neut;Animacy:=Anim;additional:=PRN;)
 <со п.*> -> (POS:=NOUN;Gender:=Neut;Animacy:=Anim;additional:=ADJI;)
 
@@ -2305,5 +2306,5 @@
 //   числ-п п 1в
 // }
 
-<(ч |числ( |,)).*> -> (POS:=NUM;)
-<числ-п.*> -> (POS:=ADJ;additional:=ORDIN;)
+<(ч |числ( [^-]|,)).*> -> (POS:=NUM;)
+<числ( )?-п.*> -> (POS:=ADJ;additional:=ORDIN;)

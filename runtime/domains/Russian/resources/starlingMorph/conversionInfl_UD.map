@@ -30,7 +30,7 @@
 <Dsm> -> (Case:=Dat;Number:=Sing;Gender:=Masc;)
 <Dsn> -> (Case:=Dat;Number:=Sing;Gender:=Neut;)
 <G> -> (Case:=Gen;)
-<G2> -> (Case:=Par;)
+<G2> -> (Case:=Par;Number:=Sing;)
 <Gf> -> (Case:=Gen;Gender:=Fem;)
 <Gm> -> (Case:=Gen;Gender:=Masc;)
 <Gn> -> (Case:=Gen;Gender:=Neut;)
@@ -49,7 +49,7 @@
 <Ism> -> (Case:=Ins;Number:=Sing;Gender:=Masc;)
 <Isn> -> (Case:=Ins;Number:=Sing;Gender:=Neut;)
 <L> -> (Case:=Loc;)
-<L2> -> (Case:=Loc;additional_infl:=Loc2;)
+<L2> -> (Case:=Loc;additional_infl:=Loc2;Number:=Sing;)
 <Lf> -> (Case:=Loc;Gender:=Fem;)
 <Lm> -> (Case:=Loc;Gender:=Masc;)
 <Ln> -> (Case:=Loc;Gender:=Neut;)
@@ -65,7 +65,7 @@
 <Np> -> (Case:=Nom;Number:=Plur;)
 <Ns> -> (Case:=Nom;Number:=Sing;)
 <Nsf> -> (Case:=Nom;Number:=Sing;Gender:=Fem;)
-<Nsm> -> (Case:=Nom;Number:=Sing;Gender:=Masc;)
+<(//)?Nsm> -> (Case:=Nom;Number:=Sing;Gender:=Masc;)
 <Nsn> -> (Case:=Nom;Number:=Sing;Gender:=Neut;)
 <Sf> -> (Variant:=Short;Gender:=Fem;Number:=Sing;)
 <Sm> -> (Variant:=Short;Gender:=Masc;Number:=Sing;)
@@ -125,9 +125,6 @@
 <act  *part  *pa> -> (VerbForm:=Part;Tense:=Past;Voice:=Act;)
 <act  *part  *pr> -> (VerbForm:=Part;Tense:=Pres;Voice:=Act;)
 
-<act  *part  *pr  *Nsm> -> (VerbForm:=Part;Tense:=Pres;Case:=nom;Number:=Sing;Gender:=Masc;Voice:=Act;)
-<act  *part  *pa  *Nsm> -> (VerbForm:=Part;Tense:=Past;Case:=nom;Number:=Sing;Gender:=Masc;Voice:=Act;)
-
 
 <pass  *imp  *(2  *)?s> -> (Voice:=Pass;VerbForm:=Fin;Mood:=Imp;Number:=Sing;)
 <pass  *imp  *(2  *)?p> -> (Voice:=Pass;VerbForm:=Fin;Mood:=Imp;Number:=Plur;)
@@ -164,5 +161,3 @@
 <pass  *part  *past> -> (Voice:=Pass;VerbForm:=Part;Tense:=Past;)
 <pass  *part  *pa> -> (Voice:=Pass;VerbForm:=Part;Tense:=Past;)
 <pass  *part  *pr> -> (Voice:=Pass;VerbForm:=Part;Tense:=Pres;)
-<pass  *part  *pr  *Nsm> -> (Voice:=Pass;VerbForm:=Part;Tense:=Pres;Case:=nom;Number:=Sing;Gender:=Masc;)
-<pass  *part  *pa  *Nsm> -> (Voice:=Pass;VerbForm:=Part;Tense:=Past;Case:=nom;Number:=Sing;Gender:=Masc;)
