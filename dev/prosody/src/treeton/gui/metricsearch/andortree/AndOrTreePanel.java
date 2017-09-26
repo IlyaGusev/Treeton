@@ -15,6 +15,8 @@ import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
 import java.awt.*;
 import java.util.*;
+import javax.swing.tree.MutableTreeNode;
+import javax.swing.tree.TreeNode;
 
 public class AndOrTreePanel<T> {
     private JXTree tree = new JXTree();
@@ -188,7 +190,50 @@ public class AndOrTreePanel<T> {
     }
 
     public void remove( Object userObject ) {
-        // TODO
+        TreePath tp = tree.getSelectionPath();
+        DefaultMutableTreeNode node = (DefaultMutableTreeNode) tp.getLastPathComponent();
+        DefaultMutableTreeNode parent = (DefaultMutableTreeNode) node.getParent();
+        if (userObject instanceof AndOperator) {
+            AndOperator<T> userOperator = (AndOperator<T>) userObject;
+            removeFromParent(parent, node, userOperator);
+        } else if (userObject instanceof OrOperator) {
+            OrOperator<T> userOperator = (OrOperator<T>) userObject;
+            removeFromParent(parent, node, userOperator);
+        } else {
+            T userOperator = (T) userObject;
+            removeFromParent(parent, node, userOperator);
+        }
+    }
+    
+    private void removeFromParent(DefaultMutableTreeNode parent, DefaultMutableTreeNode node, T userOperator) {
+        if (parent.getUserObject() instanceof AndOperator) {
+            AndOperator<T> parentOperator = (AndOperator<T>) parent.getUserObject();
+            parentOperator.userObjects.remove(userOperator);
+            model.removeNodeFromParent(node);
+        } else if (parent.getUserObject() instanceof OrOperator) {
+            OrOperator<T> parentOperator = (OrOperator<T>) parent.getUserObject();
+            parentOperator.userObjects.remove(userOperator);
+            model.removeNodeFromParent(node);
+        }
+        leaves.remove(userOperator);
+    }
+    
+    private void removeFromParent(DefaultMutableTreeNode parent, DefaultMutableTreeNode node, AndOperator<T> userOperator) {
+        if (parent.getUserObject() instanceof OrOperator) {
+            OrOperator<T> parentOperator = (OrOperator<T>) parent.getUserObject();
+            parentOperator.andOperators.remove(userOperator);
+            model.removeNodeFromParent(node);
+        }
+        andNodes.remove(userOperator);
+    }
+    
+    private void removeFromParent(DefaultMutableTreeNode parent, DefaultMutableTreeNode node, OrOperator<T> userOperator) {
+        if (parent.getUserObject() instanceof AndOperator) {
+            AndOperator<T> parentOperator = (AndOperator<T>) parent.getUserObject();
+            parentOperator.orOperators.remove(userOperator);
+            model.removeNodeFromParent(node);
+        }
+        orNodes.remove(userOperator);
     }
 
     /*DefaultMutableTreeNode folderNode = foldersToNodes.get( folder );
