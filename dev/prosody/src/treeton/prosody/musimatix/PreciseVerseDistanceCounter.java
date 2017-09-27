@@ -162,7 +162,7 @@ public class PreciseVerseDistanceCounter {
     private int getFirstValuableLine( ArrayList<VerseDescription> verseInfo, int shift ) {
         int shiftOfValuable = shift;
         for( ; shiftOfValuable < verseInfo.size(); shiftOfValuable++ ) {
-            VerseDescription x = sourceVerseInfo.get( shiftOfValuable );
+            VerseDescription x = verseInfo.get( shiftOfValuable );
             if( x != null && !x.metricVectorIsZero() ) {
                 break;
             }

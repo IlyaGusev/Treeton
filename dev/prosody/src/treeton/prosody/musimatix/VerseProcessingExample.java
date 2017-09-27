@@ -37,6 +37,7 @@ public class VerseProcessingExample {
         props.setProperty("numberOfVersesForAverageVector","-1");
         props.setProperty("fragmentSimilarityThreshold","0.8");
         props.setProperty("secondPass","true");
+		props.setProperty("regressionCoefficients", "-0.44005036979733819;-0.43525670972576069;-0.27452312098454945;-0.16282805461149963;1.0868493902627618");
 
         VerseProcessor processor = new VerseProcessor(props);
         processor.setProgressListener(new LoggerProgressListener("Musimatix",logger));
@@ -166,11 +167,22 @@ public class VerseProcessingExample {
         System.out.println("Simple distance between mixed verse and query1 "+processor.countAverageDistance( averageForQuery1, averageForMixed ));
         System.out.println("Simple distance between mixed verse and query2 "+processor.countAverageDistance( averageForQuery2, averageForMixed ));
 
-        PreciseVerseDistanceCounter preciseVerseDistanceCounter = processor.createVerseDistanceCounter(query1Descriptions,0);
+		double[] regressionCoefficients = new double[5];
+		for( int i = 0; i < regressionCoefficients.length; i++ ) {
+			regressionCoefficients[i] = 0.0;
+		}
+
+		String[] stringCoefs = props.getProperty("regressionCoefficients").split(";");
+		assert stringCoefs.length == regressionCoefficients.length;
+		for( int i = 0; i < stringCoefs.length; i++ ) {
+			regressionCoefficients[i] = Double.valueOf( stringCoefs[i] );
+		}
+		
+        PreciseVerseDistanceCounter preciseVerseDistanceCounter = processor.createVerseDistanceCounter(query1Descriptions,0, regressionCoefficients);
         System.out.println("Precise distance between verse and query1 "+preciseVerseDistanceCounter.countDistance( verseDescriptions, 0 ));
         System.out.println("Precise distance between mixed verse and query1 "+preciseVerseDistanceCounter.countDistance( mixedVerseDescriptions, 0 ));
 
-        preciseVerseDistanceCounter = processor.createVerseDistanceCounter(query2Descriptions,0);
+        preciseVerseDistanceCounter = processor.createVerseDistanceCounter(query2Descriptions,0,regressionCoefficients);
         System.out.println("Precise distance between verse and query2 "+preciseVerseDistanceCounter.countDistance( verseDescriptions, 0 ));
         System.out.println("Precise distance between mixed verse and query2 "+preciseVerseDistanceCounter.countDistance( mixedVerseDescriptions, 0 ));
 
