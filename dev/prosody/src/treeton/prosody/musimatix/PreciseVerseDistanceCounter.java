@@ -9,9 +9,9 @@ import java.util.ArrayList;
 public class PreciseVerseDistanceCounter {
     private ArrayList<VerseDescription> sourceVerseInfo; // Набор строчек текста-запроса.
     private final int sourceFirstLineIndex; // Сдвиг в тексте-запросе (часто 0).
-    private int[] dimensionPriorities; // Приоритеты столбцов матрицы "вероятностей".
+    private int[] meterRegressionIndex; // Индексы столбцов в регрессии.
     private DimensionOperation[] dimensionOperations; // Операции для "сложения" вероятностей в разных столбцах.
-    private int numberOfPriorities; // Количество приоритетов.
+    private int numberOfFeatures; // Количество фич в регрессии.
     private double[] regressionCoefficients; // Коэффициенты для разных столбцов.
 
     public enum DimensionOperation {
@@ -19,14 +19,14 @@ public class PreciseVerseDistanceCounter {
     }
 
     PreciseVerseDistanceCounter( ArrayList<VerseDescription> sourceVerseInfo, int sourceFirstLineIndex,
-                                 int numberOfPriorities, int[] dimensionPriorities,
+                                 int numberOfFeatures, int[] meterRegressionIndex,
                                  DimensionOperation[] dimensionOperations, double[] regressionCoefficients )
     {
         this.sourceVerseInfo = sourceVerseInfo;
         this.sourceFirstLineIndex = sourceFirstLineIndex;
-        this.dimensionPriorities = dimensionPriorities;
+        this.meterRegressionIndex = meterRegressionIndex;
         this.dimensionOperations = dimensionOperations;
-        this.numberOfPriorities = numberOfPriorities;
+        this.numberOfFeatures = numberOfFeatures;
         this.regressionCoefficients = regressionCoefficients;
     }
 
@@ -106,17 +106,20 @@ public class PreciseVerseDistanceCounter {
         for( int k = 0; k < sumVectorSimilarity.length; k++ ) {
             sumVectorSimilarity[k] /= realLinesNum;
         }
-        double[] maxByPriority = new double[numberOfPriorities+1];
-        for( int k = 0; k < maxByPriority.length; k++ ) {
-            maxByPriority[k] = 0.0;
+
+        double[] maxByColumn = new double[numberOfFeatures+1];
+        for( int k = 0; k < maxByColumn.length; k++ ) {
+            maxByColumn[k] = 0.0;
         }
         for( int k = 0; k < sumVectorSimilarity.length; k++ ) {
-            int priority = dimensionPriorities[k];
-            maxByPriority[priority] = Math.max(maxByPriority[priority], sumVectorSimilarity[k]);
+            int colIndex = meterRegressionIndex[k];
+            if( colIndex != -1 ) {
+                maxByColumn[colIndex] = Math.max(maxByColumn[colIndex], sumVectorSimilarity[k]);
+            }
         }
-        maxByPriority[numberOfPriorities] = 1.0; // Добавляем константу.
-        for( int k = 0; k < maxByPriority.length; k++ ) {
-           similarity += regressionCoefficients[k] * maxByPriority[k];
+        maxByColumn[numberOfFeatures] = 1.0; // Добавляем константу.
+        for( int k = 0; k < maxByColumn.length; k++ ) {
+            similarity += regressionCoefficients[k] * maxByColumn[k];
         }
         similarity = Math.min(similarity, 1.0);
         similarity = Math.max(similarity, 0.0);
@@ -138,7 +141,8 @@ public class PreciseVerseDistanceCounter {
 
             double xp = xk == null ? 0.0 : xk;
             double yp = yk == null ? 0.0 : yk;
-            vectorSimilarity[k] = dimensionOperations[k] == DimensionOperation.Multiplication ? xp * yp : 1 - Math.abs( xp - yp );
+            vectorSimilarity[k] = dimensionOperations[k] == DimensionOperation.Multiplication ?
+                    getNumberSimilarity( xp, yp ) : 1 - Math.abs( xp - yp );
         }
 
         return vectorSimilarity;
@@ -168,5 +172,12 @@ public class PreciseVerseDistanceCounter {
             }
         }
         return shiftOfValuable;
+    }
+
+    private double getNumberSimilarity( double i, double j ) {
+        if (i*j < 0.00001) {
+            return 0.0;
+        }
+        return Math.pow((1.0 - Math.abs(i - j)), 3.0);
     }
 }

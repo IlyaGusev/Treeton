@@ -615,7 +615,7 @@ public class VerseProcessor {
                                                                   int firstLineIndex, double[] regressionCoefficients)
     {
 
-        int[] dimensionPriorities = new int[metricVectorDimension];
+        int[] meterRegressionIndex = new int[metricVectorDimension];
         PreciseVerseDistanceCounter.DimensionOperation[] dimensionOperations =
                 new PreciseVerseDistanceCounter.DimensionOperation[metricVectorDimension];
         Collection<Meter> meters = probsCounter.getMeters();
@@ -623,27 +623,37 @@ public class VerseProcessor {
 
         // Все измерения, кроме 3 последних - типы метра: ямб, хорей и т.д.
         // Их "вероятности" между строчками мы будем потом перемножать.
-        // В зависимости от приоритета потом им будут проставлены разные веса.
+        // В зависимости от колонки потом им будут проставлены разные веса.
         for( Meter meter : metersArray ) {
             Integer offset = meterInsideVectorOrder.get( meter.getName() );
             for (int j = 0; j < spacePerMeter; j++) {
-                int priority = meter.getPriority();
-                assert priority >= 0;
-                dimensionPriorities[offset+j] = priority;
+                int regressionIndex = -1;
+                if (meter.getName().contains("Амфибрахий")) {
+                    regressionIndex = 0;
+                } else if (meter.getName().contains("Анапест")) {
+                    regressionIndex = 1;
+                } else if (meter.getName().contains("Дактиль")) {
+                    regressionIndex = 2;
+                } else if (meter.getName().contains("Хорей")) {
+                    regressionIndex = 3;
+                } else if (meter.getName().contains("Ямб")) {
+                    regressionIndex = 4;
+                }
+                meterRegressionIndex[offset+j] = regressionIndex;
                 dimensionOperations[offset+j] = PreciseVerseDistanceCounter.DimensionOperation.Multiplication;
             }
         }
 
         // Последние 3 измерения - тип рифмы, у них отличается способ сложения.
-        dimensionPriorities[metricVectorDimension-3] = probsCounter.getMaxMeterPriority() + 1;
-        dimensionPriorities[metricVectorDimension-2] = probsCounter.getMaxMeterPriority() + 1;
-        dimensionPriorities[metricVectorDimension-1] = probsCounter.getMaxMeterPriority() + 1;
+        meterRegressionIndex[metricVectorDimension-3] = 5;
+        meterRegressionIndex[metricVectorDimension-2] = 5;
+        meterRegressionIndex[metricVectorDimension-1] = 5;
         dimensionOperations[metricVectorDimension-3] = PreciseVerseDistanceCounter.DimensionOperation.Delta;
         dimensionOperations[metricVectorDimension-2] = PreciseVerseDistanceCounter.DimensionOperation.Delta;
         dimensionOperations[metricVectorDimension-1] = PreciseVerseDistanceCounter.DimensionOperation.Delta;
 
         return new PreciseVerseDistanceCounter( verseDescriptions, firstLineIndex,
-                probsCounter.getMaxMeterPriority()+2, dimensionPriorities,
+                6, meterRegressionIndex,
                 dimensionOperations, regressionCoefficients );
     }
 }
