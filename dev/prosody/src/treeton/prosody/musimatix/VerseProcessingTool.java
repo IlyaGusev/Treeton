@@ -433,7 +433,7 @@ public class VerseProcessingTool {
                 continue;
             }
 
-            double[] regressionCoefficients = new double[5];
+            double[] regressionCoefficients = new double[7];
             for( int i = 0; i < regressionCoefficients.length; i++ ) {
                 regressionCoefficients[i] = 0.0;
             }
