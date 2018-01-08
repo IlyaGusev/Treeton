@@ -557,7 +557,7 @@ public class YandexBagOfWordsCreator {
         Map<String,Double> stats = new HashMap<>();
 
         try {
-            InputStream is = new FileInputStream("C:/projects/treeton-git/runtime/domains/Russian/resources/starlingMorph/freqrnc2011.csv");
+            InputStream is = new FileInputStream("./domains/Russian/resources/starlingMorph/freqrnc2011.csv");
             InputStreamReader rd = new InputStreamReader( is );
             BufferedReader reader = new BufferedReader( rd );
             reader.readLine();
@@ -592,28 +592,28 @@ public class YandexBagOfWordsCreator {
         StarlingMorphEngine engine = new StarlingMorphEngine();
 
         engine.init(trnContext, grammType,
-                "C:/projects/treeton-git/runtime/domains/Russian/resources/starlingMorph/conversionLex_UD.map",
-                "C:/projects/treeton-git/runtime/domains/Russian/resources/starlingMorph/conversionInfl_UD.map", 8001);
+                "./domains/Russian/resources/starlingMorph/conversionLex_UD.map",
+                "./domains/Russian/resources/starlingMorph/conversionInfl_UD.map", 8001);
 
-        File resultsDir = new File("C:/projects/treeton-git/runtime/domains/Russian/resources/starlingMorph/4Yandex/results");
+        File resultsDir = new File("./domains/Russian/resources/starlingMorph/4Yandex/results");
         if(!resultsDir.exists() && !resultsDir.mkdir()) {
             throw new IOException("Unable to create directory for results");
         }
-        resultsDir = new File("C:/projects/treeton-git/runtime/domains/Russian/resources/starlingMorph/4Yandex/results/auto");
+        resultsDir = new File("./domains/Russian/resources/starlingMorph/4Yandex/results/auto");
         if(resultsDir.exists()) {
             FileUtils.deleteDirectory(resultsDir);
         }
         if (!resultsDir.mkdir()) {
             throw new IOException("Unable to create directory for auto results");
         }
-        resultsDir = new File("C:/projects/treeton-git/runtime/domains/Russian/resources/starlingMorph/4Yandex/results/unsure");
+        resultsDir = new File("./domains/Russian/resources/starlingMorph/4Yandex/results/unsure");
         if(resultsDir.exists()) {
             FileUtils.deleteDirectory(resultsDir);
         }
         if (!resultsDir.mkdir()) {
             throw new IOException("Unable to create directory for unsure results");
         }
-        resultsDir = new File("C:/projects/treeton-git/runtime/domains/Russian/resources/starlingMorph/4Yandex/results/error");
+        resultsDir = new File("./domains/Russian/resources/starlingMorph/4Yandex/results/error");
         if(resultsDir.exists()) {
             FileUtils.deleteDirectory(resultsDir);
         }
@@ -623,7 +623,7 @@ public class YandexBagOfWordsCreator {
 
         Set<Integer> checkedIds = new HashSet<>();
 
-        File checkedDir = new File("C:/projects/treeton-git/runtime/domains/Russian/resources/starlingMorph/4Yandex/results/checked");
+        File checkedDir = new File("./domains/Russian/resources/starlingMorph/4Yandex/results/checked");
         if(checkedDir.exists()) {
             if(!checkedDir.isDirectory()) {
                 throw new IOException(checkedDir.getPath()+" is not a directory");
@@ -647,7 +647,7 @@ public class YandexBagOfWordsCreator {
             }
         }
 
-        InputStream is = new FileInputStream("C:/projects/treeton-git/runtime/domains/Russian/resources/starlingMorph/dict_ru.dct");
+        InputStream is = new FileInputStream("./domains/Russian/resources/starlingMorph/dict_ru.dct");
         InputStreamReader rd = new InputStreamReader(is, "866");
         BufferedReader reader = new BufferedReader(rd);
         Set<String> allLinesSet = new HashSet<>();
@@ -660,12 +660,12 @@ public class YandexBagOfWordsCreator {
         Map<String, String> unsurePathsForZindexes = new HashMap<>();
         Map<String, String> errorPathsForZindexes = new HashMap<>();
 
-        PrintStream unmatchedLog = new PrintStream("C:/projects/treeton-git/runtime/domains/Russian/resources/starlingMorph/4Yandex/unmatched.log");
-        PrintStream zindexesLog = new PrintStream("C:/projects/treeton-git/runtime/domains/Russian/resources/starlingMorph/4Yandex/zindexes.log");
-        PrintStream inflExpressionsLog = new PrintStream("C:/projects/treeton-git/runtime/domains/Russian/resources/starlingMorph/4Yandex/inflExpressions.log");
-        PrintStream paradigmElementsCountLog = new PrintStream("C:/projects/treeton-git/runtime/domains/Russian/resources/starlingMorph/4Yandex/paradigmElementsCount.log");
-        PrintStream unsureParadigmsLog = new PrintStream("C:/projects/treeton-git/runtime/domains/Russian/resources/starlingMorph/4Yandex/unsureParadigms.log");
-        PrintStream errorParadigmsLog = new PrintStream("C:/projects/treeton-git/runtime/domains/Russian/resources/starlingMorph/4Yandex/errorParadigms.log");
+        PrintStream unmatchedLog = new PrintStream("./domains/Russian/resources/starlingMorph/4Yandex/unmatched.log");
+        PrintStream zindexesLog = new PrintStream("./domains/Russian/resources/starlingMorph/4Yandex/zindexes.log");
+        PrintStream inflExpressionsLog = new PrintStream("./domains/Russian/resources/starlingMorph/4Yandex/inflExpressions.log");
+        PrintStream paradigmElementsCountLog = new PrintStream("./domains/Russian/resources/starlingMorph/4Yandex/paradigmElementsCount.log");
+        PrintStream unsureParadigmsLog = new PrintStream("./domains/Russian/resources/starlingMorph/4Yandex/unsureParadigms.log");
+        PrintStream errorParadigmsLog = new PrintStream("./domains/Russian/resources/starlingMorph/4Yandex/errorParadigms.log");
         ArrayList<Paradigm> unsureParadigms = new ArrayList<>();
         ArrayList<Paradigm> errorParadigms = new ArrayList<>();
 
@@ -731,7 +731,7 @@ public class YandexBagOfWordsCreator {
             reader.close();
 
             for (Map.Entry<String, ArrayList<ZindexKey>> entry : allWords.entrySet()) {
-                String outPath = getPathForZindex("C:/projects/treeton-git/runtime/domains/Russian/resources/starlingMorph/4Yandex/results", entry.getKey(), ParadigmStatus.auto);
+                String outPath = getPathForZindex("./domains/Russian/resources/starlingMorph/4Yandex/results", entry.getKey(), ParadigmStatus.auto);
 
                 outPath += "_" + Integer.toString(entry.getValue().size());
 
@@ -742,7 +742,7 @@ public class YandexBagOfWordsCreator {
                 outfileNames.add(outPath);
                 autoPathsForZindexes.put(entry.getKey(), outPath);
 
-                outPath = getPathForZindex("C:/projects/treeton-git/runtime/domains/Russian/resources/starlingMorph/4Yandex/results", entry.getKey(), ParadigmStatus.unsure);
+                outPath = getPathForZindex("./domains/Russian/resources/starlingMorph/4Yandex/results", entry.getKey(), ParadigmStatus.unsure);
 
                 outPath += "_" + Integer.toString(entry.getValue().size());
 
@@ -753,7 +753,7 @@ public class YandexBagOfWordsCreator {
                 outfileNames.add(outPath);
                 unsurePathsForZindexes.put(entry.getKey(), outPath);
 
-                outPath = getPathForZindex("C:/projects/treeton-git/runtime/domains/Russian/resources/starlingMorph/4Yandex/results", entry.getKey(), ParadigmStatus.error);
+                outPath = getPathForZindex("./domains/Russian/resources/starlingMorph/4Yandex/results", entry.getKey(), ParadigmStatus.error);
 
                 outPath += "_" + Integer.toString(entry.getValue().size());
 
@@ -769,6 +769,7 @@ public class YandexBagOfWordsCreator {
 
             HashSet<String> exceptionWords = new HashSet<>();
             exceptionWords.add("яя");
+
 
             List<String> sortedZindexes = new ArrayList<>(allWords.keySet());
             sortedZindexes.sort(String.CASE_INSENSITIVE_ORDER);
@@ -834,13 +835,13 @@ public class YandexBagOfWordsCreator {
                             continue;
                         }
 
-                        if (zindexKey.lemma.length() >= 20) {
-                            paradigm.modifyStatus(ParadigmStatus.error);
-                            paradigm.addError_message("too long lemma");
-                            errorParadigmsLog.println(zindexKey.lemma + " " + normalizedZindex + " : " + paradigm.getError_message());
-                            smartOut.print(paradigm);
-                            continue;
-                        }
+//                        if (zindexKey.lemma.length() >= 20) {
+//                            paradigm.modifyStatus(ParadigmStatus.error);
+//                            paradigm.addError_message("too long lemma");
+//                            errorParadigmsLog.println(zindexKey.lemma + " " + normalizedZindex + " : " + paradigm.getError_message());
+//                            smartOut.print(paradigm);
+//                            continue;
+//                        }
 
                         ArrayList<String[]> variants;
 
@@ -851,7 +852,7 @@ public class YandexBagOfWordsCreator {
                             paradigm.addError_message("starling internal error");
                             errorParadigmsLog.println(zindexKey.lemma + " " + normalizedZindex + " : " + paradigm.getError_message());
                             smartOut.print(paradigm);
-                            throw new RuntimeException("Starling internal error with word " + zindexKey.lemma, e);
+                            continue;
                         }
 
                         if (variants.isEmpty()) {
@@ -1093,7 +1094,7 @@ public class YandexBagOfWordsCreator {
             unsureParadigmsLog.close();
             errorParadigmsLog.close();
 
-            File unsureSortedFile = new File("C:/projects/treeton-git/runtime/domains/Russian/resources/starlingMorph/4Yandex/results/unsure/sortedByFrequency." + String.format("%05d", unsureParadigms.size()));
+            File unsureSortedFile = new File("./domains/Russian/resources/starlingMorph/4Yandex/results/unsure/sortedByFrequency." + String.format("%05d", unsureParadigms.size()));
             if (!unsureSortedFile.exists()) {
                 if (!unsureSortedFile.createNewFile()) {
                     System.err.println("Unable to create " + unsureSortedFile.getPath());
@@ -1106,7 +1107,7 @@ public class YandexBagOfWordsCreator {
             }
             unsureOut.close();
 
-            File errorsSortedFile = new File("C:/projects/treeton-git/runtime/domains/Russian/resources/starlingMorph/4Yandex/results/error/sortedByFrequency." + String.format("%05d", errorParadigms.size()));
+            File errorsSortedFile = new File("./domains/Russian/resources/starlingMorph/4Yandex/results/error/sortedByFrequency." + String.format("%05d", errorParadigms.size()));
             if (!errorsSortedFile.exists()) {
                 if (!errorsSortedFile.createNewFile()) {
                     System.err.println("Unable to create " + errorsSortedFile.getPath());

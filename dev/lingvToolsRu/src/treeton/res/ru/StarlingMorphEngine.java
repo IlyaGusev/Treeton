@@ -382,7 +382,7 @@ public class StarlingMorphEngine implements MorphInterface, GrammAndZindexLogger
         buf.put("http://localhost/".getBytes());
         buf.put((byte) 13);
         buf.put((byte) 10);
-        buf.put("_MO_-a ".getBytes());
+        buf.put("_MO_-r ".getBytes());
         buf.put(word.getBytes("CP866"));
         buf.put((byte) 13);
         buf.put((byte) 10);
