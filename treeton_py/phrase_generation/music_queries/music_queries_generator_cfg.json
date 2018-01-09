@@ -1,0 +1,37 @@
+{
+  "phrase_ids": [
+    "music.turn_music_on"
+  ],
+  "number_of_iterations": 1000,
+  "form": [
+    {
+      "artist": [
+        "sample_from_list",
+        [
+          "Beatles",
+          "Аквариум",
+          "Queen",
+          null
+        ]
+      ],
+      "album": [
+        "sample_from_list",
+        [
+          "Help",
+          "Праздник урожая во дворце труда",
+          "A night at the opera",
+          null
+        ]
+      ],
+      "track": [
+        "sample_from_list",
+        [
+          "Yesterday",
+          "Город",
+          "We will rock you",
+          null
+        ]
+      ]
+    }
+  ]
+}

@@ -1,0 +1,199 @@
+# music verbs
+
+music_action:
+  extends: common.abstract_action
+
+launch_imperf:
+  extends: music_action
+  lex:
+    - запускать
+    - играть
+    - проигрывать
+    - ставить
+    - врубать
+    - включать
+    - воспроизводить
+
+launch_perf:
+  extends: music_action
+  lex:
+    - запустить
+    - сыграть
+    - проиграть
+    - плей
+    - play
+    - поставить
+    - врубить
+    - включить
+    - воспроизвести
+
+listen_perf:
+  extends: music_action
+  lex:
+    - услышать
+    - прослушать
+
+listen_imperf:
+  extends: music_action
+  lex:
+    - слушать
+    - прослушивать
+    - слышать
+
+all_launch_verbs:
+  - launch_perf
+  - launch_imperf
+
+all_music_verbs:
+  - launch_perf
+  - launch_imperf
+  - listen_perf
+  - listen_imperf
+
+# music objects
+
+abstract_music:
+  extends: common.abstract_object
+  lex:
+    - музыка
+    - музон
+    - музяка
+    - музло
+    - песни
+    - песня
+
+track_keyword:
+  extends: common.abstract_named_object
+  lex:
+    - песня
+    - трэк
+    - трек
+    - track
+    - хит
+    - hit
+    - песенка
+    - мелодия
+    - композиция
+    - произведение
+
+track_name:
+  - root:
+      extends: common.bracketed
+    tag: track
+    content:
+      lookup: track
+
+track:
+  - root: track_keyword
+    name: track_name
+  - track_name
+
+album_keyword:
+  extends: common.abstract_named_object
+  lex:
+    - альбом
+    - пластинка
+    - диск
+
+album_name:
+  - root:
+      extends: common.bracketed
+    tag: album
+    content:
+      lookup: album
+
+album:
+  - root: album_keyword
+    name: album_name
+  - album_name
+
+artist_keyword:
+  extends: common.abstract_named_object
+  content_variants:
+    - lex:
+      - группа
+      - группировка
+      - исполнитель
+      - бэнд
+      - band
+      - команда
+      - ВИА
+      - коллектив
+      - ансамбль
+    - root:
+        - extends: common.abstract_object
+          lex: коллектив
+          gov:
+            attr:
+              optional: false
+              orientation: left
+              max_cardinality: 1
+      attr:
+        - extends: common.abstract_attribute
+          lex: музыкальный
+
+artist_name:
+  - root:
+      extends: common.bracketed
+    tag: artist
+    content:
+      lookup: artist
+
+artist:
+  - root: artist_keyword
+    name:
+      - artist_name
+  - artist_name
+
+playlist_keyword:
+  extends: common.abstract_named_object
+  content_variants:
+    - lex:
+      - плейлист
+      - подборка
+      - треклист
+    - root:
+        - extends: common.abstract_object
+          lex: [список, набор]
+      component:
+        - extends: common.abstract_object
+          lex: песня
+
+playlist_name:
+  - root:
+      extends: common.bracketed
+    tag: playlist
+    content:
+      lookup: playlist
+
+playlist:
+  - root: playlist_keyword
+    name:
+      - playlist_name
+  - playlist_name
+
+complex_music_entity:
+  root: common.conj_zero
+  conjunct:
+    - artist
+    - album
+    - track
+    - playlist
+
+all_music:
+  - abstract_music
+  - complex_music_entity
+
+turn_music_on:
+  - root: common.infinitive_clause
+    infinitive:
+      root: all_music_verbs
+      object: all_music
+  - root: common.imperative_clause
+    imperative:
+      - root: all_launch_verbs
+        object: all_music
+  - root: common.abstract_clause
+    aux:
+      - all_music_verbs
+      - all_music
