@@ -195,6 +195,7 @@ if __name__ == "__main__":
     config_file = open(args.config_path)
     config = json.load(config_file)
 
+    # TODO init morph engine
     phrase_generator = PhraseGenerator(PhraseGrammar(args.phrase_grammar_path))
 
     shortest_toplist = []

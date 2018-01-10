@@ -32,7 +32,7 @@ class Paradigm(object):
             source_acc_info=None if light else data.get('source_acc_info'),
             starling_paradigm=None if light else data.get('starling_paradigm'),
             error_message=None if light else data.get('error_message'),
-            gramm=frozenset(data['gramm'])
+            gramm=frozenset([g.lower() for g in data['gramm']])
         )
 
         elements_data = data.get('paradigm')
@@ -137,18 +137,34 @@ class ParadigmElement(object):
             sec_accent=data.get('sec_accent'),
             yo_place=data.get('yo_place'),
             starling_infl_info=None if light else data.get('starling_infl_info'),
-            gramm=frozenset(data['gramm'])
+            gramm=frozenset([g.lower() for g in data['gramm']])
         )
 
 
 class MorphDictionary(MorphEngine):
+    grammemes_by_categories = {
+        'case': {
+            'nom', 'acc', 'dat', 'gen', 'ins', 'loc', 'par', 'voc'
+        },
+        'number': {
+            'plur', 'sing'
+        },
+        'gender': {
+            'fem', 'masc', 'neut'
+        },
+    }
+
+    categories_by_grammemes = {
+        g: cat
+        for cat, grammemes in grammemes_by_categories.items()
+        for g in grammemes
+    }
+
     def get_possible_grammemes(self, category):
-        # TODO
-        pass
+        return self.grammemes_by_categories[category]
 
     def get_category_for_grammeme(self, grammeme):
-        # TODO
-        pass
+        return self.categories_by_grammemes.get(grammeme)
 
     def synthesise(self, paradigm_id, gramm):
         paradigm = self.get_paradigm(paradigm_id)
