@@ -2,7 +2,7 @@
   "phrase_ids": [
     "music.turn_music_on"
   ],
-  "number_of_iterations": 1000,
+  "number_of_iterations": 100,
   "form": [
     {
       "artist": [

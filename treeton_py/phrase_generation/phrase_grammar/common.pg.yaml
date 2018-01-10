@@ -81,13 +81,13 @@ imperative_clause:
   extends: abstract_clause
   gov:
     imperative:
-      gramm: [V,imper]
+      gramm: [verb,imp]
 
 infinitive_clause:
   extends: abstract_clause
   gov:
     infinitive:
-      gramm: [V]
+      gramm: [verb]
 
 clause:
   - imperative_clause
@@ -111,7 +111,7 @@ abstract_action:
   extends: abstract_entity
   gov:
     object:
-      gramm: [S,acc]
+      gramm: [noun,acc]
 
 abstract_object:
   extends: abstract_entity
@@ -120,9 +120,9 @@ abstract_object:
       optional: true
       max_cardinality: 5
       agree: [case,number,gender]
-      gramm: [A]
+      gramm: [adj]
     component:
-      gramm: [S,gen]
+      gramm: [noun,gen]
 
 abstract_named_object:
   extends: abstract_object

@@ -22,7 +22,7 @@ class Paradigm(object):
     @classmethod
     def from_dict(cls, data, light=False):
         p = Paradigm(
-            lemma=data['lemma'],
+            lemma=MorphDictionary.normalize(data['lemma']),
             id=data['id'],
             frequency=None if light else data['frequency'],
             status=data['status'],
@@ -130,7 +130,7 @@ class ParadigmElement(object):
             starling_form = None
 
         return ParadigmElement(
-            form=form,
+            form=MorphDictionary.normalize(form),
             starling_form=starling_form,
             accent=data['accent'],
             awkward=data.get('awkward'),
@@ -174,8 +174,12 @@ class MorphDictionary(MorphEngine):
         return [
             pe.form
             for pe in paradigm.elements
-            if pe.gramm.union(pe.parent_paradigm.gramm).contains(gramm)
+            if gramm.issubset(pe.gramm.union(pe.parent_paradigm.gramm))
         ]
+
+    @staticmethod
+    def normalize(s):
+        return s.strip().lower()
 
     def analyse(self, word):
         return [
@@ -185,7 +189,7 @@ class MorphDictionary(MorphEngine):
                 accent=pe.accent,
                 gramm=pe.gramm.union(pe.parent_paradigm.gramm)
             )
-            for pe in self._paradigm_elements.get(word, [])
+            for pe in self._paradigm_elements.get(self.normalize(word), [])
         ]
 
     def __init__(self, light_weight=False):

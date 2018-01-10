@@ -19,7 +19,7 @@ class LabelDisjunction(object):
         )
 
     def __str__(self):
-        return '|'.join([sorted(label_set) for label_set in self._disjunction_of_label_sets])
+        return '|'.join([str(sorted(label_set)) for label_set in self._disjunction_of_label_sets])
 
     def __repr__(self):
         return self.__str__()

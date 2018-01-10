@@ -2,7 +2,6 @@
 import logging
 import os
 import attr
-import argparse
 import random
 import ruamel.yaml as yaml
 
@@ -385,7 +384,7 @@ class Phrase(object):
     root = attr.ib(default=None)
     children = attr.ib(default=attr.Factory(dict))
     lex = attr.ib(default=None)
-    morph_an_result = attr.ib(default=None)
+    morph_an_results = attr.ib(default=None)
     inflected_form = attr.ib(default=None)
     tag = attr.ib(default=None)
     left_punctuator = attr.ib(default=None)
@@ -476,30 +475,12 @@ class PhraseGenerator(object):
         # in that case we are dealing with zero
         return phrase
 
-    def _calculate_morph_an_result(self, phrase):
-        lex = phrase.lex
+    def _calculate_morph_an_results(self, phrase):
+        if phrase.lex and phrase.morph_an_results is None:
+            phrase.morph_an_results = self._morph_engine.analyse(phrase.lex)
 
-        if lex and not phrase.morph_an_result:
-            parsing_result = self._morph_engine.analyse(lex)
-
-            chosen_result = None
-            for morph_an_result in parsing_result:
-                if not morph_an_result.gramm.contains(phrase.grammemes):
-                    continue
-
-                if phrase.paradigm_id:
-                    logger.warning(
-                        'Ambiguous word "%s", paradigm %d was chosen randomly' %
-                        (lex, phrase.morph_an_result.paradigm_id)
-                    )
-                    break
-
-                chosen_result = morph_an_result
-
-            if chosen_result:
-                phrase.morph_an_result = chosen_result
-            else:
-                logger.warning('Unknown word "%s", unable to inflect' % lex)
+            if not phrase.morph_an_results:
+                logger.warning('Unknown word "%s"' % phrase.lex)
 
     def _inflect(self, phrase):
         categories_to_extract = set()
@@ -529,27 +510,28 @@ class PhraseGenerator(object):
             assert phrase.parent.root != phrase
             agree_host = self._find_deepest_root(phrase.parent.root)
 
-            self._calculate_morph_an_result(agree_host)
+            self._calculate_morph_an_results(agree_host)
 
-            if agree_host.morph_an_result:
+            if agree_host.morph_an_results:
                 extracted_values = {category: None for category in categories_to_extract}
-                for gr in agree_host.morph_an_result.gramm:
-                    category = self._morph_engine.get_category_for_grammeme(gr)
+                for morph_an_result in agree_host.morph_an_results:
+                    for gr in morph_an_result.gramm:
+                        category = self._morph_engine.get_category_for_grammeme(gr)
 
-                    if not category or category not in extracted_values:
-                        continue
+                        if not category or category not in extracted_values:
+                            continue
 
-                    old_value = extracted_values.get(category)
-                    if old_value and old_value != gr:
-                        extracted_values.pop(category)
-                    elif not old_value:
-                        extracted_values[category] = gr
+                        old_value = extracted_values.get(category)
+                        if old_value and old_value != gr:
+                            extracted_values.pop(category)
+                        elif not old_value:
+                            extracted_values[category] = gr
 
                 for c in categories_to_extract:
                     if c not in extracted_values:
                         logger.warning(
                             'Unable to extract the value of category "%s", word "%s"' % c,
-                            agree_host.morph_an_result.lemma
+                            agree_host.lex
                         )
 
                 extracted_values = {gr for gr in extracted_values.values() if gr}
@@ -561,27 +543,39 @@ class PhraseGenerator(object):
             self._update_grammemes(phrase, new_grammemes)
 
         if phrase.lex:
-            self._calculate_morph_an_result(phrase)
-            if phrase.morph_an_result and phrase.grammemes:
-                inflection_variants = self._morph_engine.synthesise(
-                    phrase.morph_an_result.paradigm_id,
-                    phrase.grammemes
-                )
-                if not inflection_variants:
-                    logger.warning('Unable to inflect "%s" with gramemmes %s' % (
-                        phrase.morph_an_result.lemma,
-                        phrase.grammemes
-                    ))
-                    phrase.inflected_form = phrase.morph_an_result.lemma
-                elif len(inflection_variants) > 1:
-                    logger.warning('Ambiguous inflection of "%s" with gramemmes %s, choosing first variant' % (
-                        phrase.morph_an_result.lemma,
-                        phrase.grammemes
-                    ))
+            self._calculate_morph_an_results(phrase)
+            if phrase.morph_an_results:
+                ambig = False
+                inflection_variant = None
+                for morph_an_result in phrase.morph_an_results:
+                    inflection_variants = self._morph_engine.synthesise(
+                        morph_an_result.paradigm_id,
+                        phrase.grammemes or set()
+                    )
+
+                    if inflection_variants:
+                        if inflection_variant:
+                            ambig = True
+                            break
+                        else:
+                            inflection_variant = inflection_variants[0]
+                            if len(inflection_variants) > 1:
+                                ambig = True
+                                break
+
+                if inflection_variant:
+                    if ambig:
+                        logger.warning('Ambiguous inflection of "%s" with gramemmes %s, choosing random variant' % (
+                            phrase.lex,
+                            phrase.grammemes
+                        ))
+                    phrase.inflected_form = inflection_variant
                 else:
-                    phrase.inflected_form = inflection_variants[0]
-            elif phrase.morph_an_result:
-                phrase.inflected_form = phrase.morph_an_result.lemma
+                    logger.warning('Unable to inflect "%s" with gramemmes %s' % (
+                        phrase.lex,
+                        phrase.grammemes
+                    ))
+                    phrase.inflected_form = phrase.lex
             else:
                 phrase.inflected_form = phrase.lex
 
@@ -785,27 +779,3 @@ class PhraseGenerator(object):
         if not result.tag:
             result.tag = phrase_description.tag
         return result
-
-
-def test_run(target_phrase, grammar_path):
-    # TODO init morph engine
-    generator = PhraseGenerator(PhraseGrammar(grammar_path))
-    for phrase in generator.generate(
-        target_phrase, context={'artist': 'Beatles', 'album': 'Let it be'}, limit=5
-    ):
-        if not phrase:
-            break
-
-        print(phrase)
-        for i in range(5):
-            print(generator.render_string(phrase))
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Generate phrases using phrase grammar framework.',
-                                     formatter_class=argparse.RawDescriptionHelpFormatter)
-
-    parser.add_argument('--grammar-path', type=str, required=True, help='path to the directory with grammar files')
-    parser.add_argument('--target-phrase', type=str, required=True, help='name of the phrase to sample')
-    args = parser.parse_args()
-    logging.basicConfig(level=logging.DEBUG)
-    test_run(args.target_phrase, args.grammar_path)

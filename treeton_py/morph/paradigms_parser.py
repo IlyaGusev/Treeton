@@ -34,8 +34,8 @@ class ParadigmsParser:
             'error_message', 'form', 'starling_form', 'starling_infl_info'
         ))
 
-    def load_dict_from_directory(self, path):
-        morph_dict = MorphDictionary()
+    def load_dict_from_directory(self, path, light_weight=False):
+        morph_dict = MorphDictionary(light_weight=light_weight)
         logging.info('Reading files')
         file_count = 0
         encountered_keys = set()
