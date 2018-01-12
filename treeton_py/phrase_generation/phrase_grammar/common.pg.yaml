@@ -81,13 +81,13 @@ imperative_clause:
   extends: abstract_clause
   gov:
     imperative:
-      gramm: [verb,imp]
+      gramm: [verb,fin,imp]
 
 infinitive_clause:
   extends: abstract_clause
   gov:
     infinitive:
-      gramm: [verb]
+      gramm: [verb,inf]
 
 clause:
   - imperative_clause
@@ -109,12 +109,14 @@ abstract_entity:
 
 abstract_action:
   extends: abstract_entity
+  gramm: [verb,fin]
   gov:
     object:
       gramm: [noun,acc]
 
 abstract_object:
   extends: abstract_entity
+  gramm: [noun,nom]
   gov:
     attr:
       optional: true

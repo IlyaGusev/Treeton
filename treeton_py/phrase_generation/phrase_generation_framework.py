@@ -33,6 +33,7 @@ class PhraseDescription(object):
     predecessors = attr.ib(default=attr.Factory(list))
     gov_models = attr.ib(default=attr.Factory(dict))
     punctuation_info = attr.ib(default=attr.Factory(dict))
+    grammemes = attr.ib(default=attr.Factory(set))
     label_formula = attr.ib(default=None)
 
     def calculate_label_formulae(self):
@@ -213,6 +214,7 @@ class PhraseGrammar(object):
                 phrase_description.gov_models = deepcopy(base_phrase.gov_models)
                 phrase_description.tag = base_phrase.tag
                 phrase_description.punctuation_info = dict(base_phrase.punctuation_info)
+                phrase_description.grammemes = set(base_phrase.grammemes)
 
             predecessors = data.get('extends')
             if predecessors:
@@ -228,6 +230,8 @@ class PhraseGrammar(object):
                         phrase_description.tag = predecessor_phrase_descr.tag
                     if predecessor_phrase_descr.punctuation_info:
                         phrase_description.punctuation_info = dict(predecessor_phrase_descr.punctuation_info)
+
+                    phrase_description.grammemes.update(predecessor_phrase_descr.grammemes)
 
                     self._merge_gov_models(phrase_description, predecessor_phrase_descr.gov_models)
                     phrase_description.predecessors.append(predecessor_phrase_descr)
@@ -246,6 +250,12 @@ class PhraseGrammar(object):
             if punctuation_info:
                 assert isinstance(punctuation_info, dict)
                 phrase_description.punctuation_info = punctuation_info
+
+            gramm = data.get('gramm')
+
+            if gramm:
+                assert isinstance(gramm, list)
+                phrase_description.grammemes.update(gramm)
 
             if lex:
                 if not isinstance(lex, list):
@@ -275,6 +285,8 @@ class PhraseGrammar(object):
 
         phrase_description.calculate_label_formulae()
         logger.info('%s successfully loaded.' % full_name)
+        logger.debug('Label formula is %s' % phrase_description.label_formula)
+
         return phrase_description
 
     def _load_phrases_from_list(self, context_name, phrase_list, base_phrase=None):
@@ -317,7 +329,7 @@ class PhraseGrammar(object):
                 raise ValueError('root section for phrase %s is empty' % phrase_description.name)
 
         for semantic_role, raw_children_variants in data.items():
-            if semantic_role in {'root', 'extends', 'gov', 'tag', 'punctuation'}:
+            if semantic_role in {'root', 'extends', 'gov', 'tag', 'punctuation', 'gramm'}:
                 continue
 
             phrase_description.children_info[semantic_role] = self._load_phrases_from_list(
@@ -436,6 +448,10 @@ class PhraseGenerator(object):
         self._grammar = grammar
         assert self._grammar.is_loaded(), 'Phrase generator can not be built over the uninitialized grammar'
         self._morph_engine = morph_engine
+        self._detected_unknown_words = set()
+
+    def get_detected_unknown_words(self):
+        return list(self._detected_unknown_words)
 
     def generate(self, full_phrase_name, context, limit=1):
         phrase_description = self._grammar.get_phrase_description(full_phrase_name)
@@ -443,7 +459,6 @@ class PhraseGenerator(object):
             raise LookupError('Phrase %s is not defined' % full_phrase_name)
 
         logger.debug('Generating phrase %s' % full_phrase_name)
-        logger.debug('Label formula is %s' % phrase_description.label_formula)
 
         target_labels = frozenset(context.keys())
         while limit:
@@ -461,7 +476,25 @@ class PhraseGenerator(object):
         yield None
 
     def _update_grammemes(self, phrase, new_grammemes):
-        phrase.grammemes.update(new_grammemes)
+        new_known_categories = set()
+        for gr in new_grammemes:
+            cat = self._morph_engine.get_category_for_grammeme(gr)
+            if cat:
+                if cat in new_known_categories:
+                    logger.error('Duplicate grammeme for category %s detected, skipping' % cat)
+                else:
+                    new_known_categories.add(cat)
+
+        union_grammemes = set()
+
+        for gr in phrase.grammemes:
+            cat = self._morph_engine.get_category_for_grammeme(gr)
+            if not cat or cat not in new_known_categories:
+                union_grammemes.add(gr)
+
+        union_grammemes.update(new_grammemes)
+        phrase.grammemes = union_grammemes
+
         if phrase.root:
             self._update_grammemes(phrase.root, new_grammemes)
 
@@ -480,7 +513,7 @@ class PhraseGenerator(object):
             phrase.morph_an_results = self._morph_engine.analyse(phrase.lex)
 
             if not phrase.morph_an_results:
-                logger.warning('Unknown word "%s"' % phrase.lex)
+                self._detected_unknown_words.add(phrase.lex)
 
     def _inflect(self, phrase):
         categories_to_extract = set()
@@ -530,8 +563,7 @@ class PhraseGenerator(object):
                 for c in categories_to_extract:
                     if c not in extracted_values:
                         logger.warning(
-                            'Unable to extract the value of category "%s", word "%s"' % c,
-                            agree_host.lex
+                            'Unable to extract the value of category "%s", word "%s"' % (c, agree_host.lex)
                         )
 
                 extracted_values = {gr for gr in extracted_values.values() if gr}
@@ -545,31 +577,15 @@ class PhraseGenerator(object):
         if phrase.lex:
             self._calculate_morph_an_results(phrase)
             if phrase.morph_an_results:
-                ambig = False
-                inflection_variant = None
+                inflection_variants = []
                 for morph_an_result in phrase.morph_an_results:
-                    inflection_variants = self._morph_engine.synthesise(
+                    inflection_variants += self._morph_engine.synthesise(
                         morph_an_result.paradigm_id,
                         phrase.grammemes or set()
                     )
 
-                    if inflection_variants:
-                        if inflection_variant:
-                            ambig = True
-                            break
-                        else:
-                            inflection_variant = inflection_variants[0]
-                            if len(inflection_variants) > 1:
-                                ambig = True
-                                break
-
-                if inflection_variant:
-                    if ambig:
-                        logger.warning('Ambiguous inflection of "%s" with gramemmes %s, choosing random variant' % (
-                            phrase.lex,
-                            phrase.grammemes
-                        ))
-                    phrase.inflected_form = inflection_variant
+                if inflection_variants:
+                    phrase.inflected_form = random.choice(inflection_variants)
                 else:
                     logger.warning('Unable to inflect "%s" with gramemmes %s' % (
                         phrase.lex,
@@ -652,7 +668,8 @@ class PhraseGenerator(object):
             result = self._choose(phrase_variant, context, target_labels)
             assert result
         else:
-            result = Phrase(phrase_description)
+            result = Phrase(phrase_description, grammemes=set(phrase_description.grammemes))
+
             if isinstance(phrase_description, PhraseDescriptionLex):
                 result.lex = random.choice(phrase_description.lex_variants)
             elif isinstance(phrase_description, PhraseDescriptionLookup):

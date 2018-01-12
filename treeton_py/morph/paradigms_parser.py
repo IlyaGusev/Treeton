@@ -2,6 +2,8 @@ import glob
 import os
 import logging
 import difflib
+import pickle
+import _pickle
 
 from paradigms import MorphDictionary
 
@@ -25,6 +27,9 @@ class ParadigmsParser:
 
             value = [v.strip() for v in value[1:-1].split(',')]
 
+            # TODO remove this fix after regeneration of paradigms
+            value = ['noun' if v.lower() == 'n' else v for v in value]
+
         return key, value
 
     @staticmethod
@@ -35,8 +40,16 @@ class ParadigmsParser:
         ))
 
     def load_dict_from_directory(self, path, light_weight=False):
+        logging.info('Reading morph dictionary from %s' % path)
+        path_to_binary = path + '/.bin_morph'
+        if light_weight and os.path.exists(path_to_binary):
+            with open(path_to_binary, 'rb') as handle:
+                morph_dict = _pickle.load(handle)
+            if morph_dict:
+                logging.info('Succesfully loaded %d paradigms from binaries' % morph_dict.size())
+                return morph_dict
+
         morph_dict = MorphDictionary(light_weight=light_weight)
-        logging.info('Reading files')
         file_count = 0
         encountered_keys = set()
         for file in glob.iglob(path+'/**/*', recursive=True):
@@ -91,6 +104,13 @@ class ParadigmsParser:
 
         logging.info('%d files containing %d paradigms were read' % (file_count, morph_dict.size()))
         logging.info('encountered keys %s' % encountered_keys)
+
+        if light_weight:
+            path_to_binary = path + '/.bin_morph'
+            with open(path_to_binary, 'wb') as handle:
+                _pickle.dump(morph_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            logging.info('Succesfully stored %d paradigms in binary form' % morph_dict.size())
+
         return morph_dict
 
 if __name__ == "__main__":

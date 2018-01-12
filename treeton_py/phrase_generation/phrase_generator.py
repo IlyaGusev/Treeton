@@ -217,6 +217,10 @@ if __name__ == "__main__":
             except Exception as e:
                 print('skipping form due to error: %s' % e)
 
+    detected_unknowns = phrase_generator.get_detected_unknown_words()
+    if detected_unknowns:
+        logger.warning('Unknown words were detected during generation: %s' % detected_unknowns)
+
     shortest_toplist.sort(key=lambda t: len(t[1]))
 
     with codecs.open(args.out_path, 'w', encoding='utf-8') as f_out:

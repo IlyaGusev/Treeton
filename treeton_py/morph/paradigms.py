@@ -152,6 +152,12 @@ class MorphDictionary(MorphEngine):
         'gender': {
             'fem', 'masc', 'neut'
         },
+        'verbform': {
+            'conv', 'fin', 'inf', 'part'
+        },
+        'mood': {
+            'cnd', 'imp', 'ind'
+        }
     }
 
     categories_by_grammemes = {

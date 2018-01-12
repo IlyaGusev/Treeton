@@ -1727,14 +1727,14 @@
 //   с 8**с-, _Р мн нет_
 // }
 
-<с 0.*> -> (POS:=N;Gender:=Neut;Animacy:=Inan;additional:=INVAR;)
-<с(,)? [123456789]([0123456789])*.*> -> (POS:=N;Gender:=Neut;Animacy:=Inan;)
+<с 0.*> -> (POS:=NOUN;Gender:=Neut;Animacy:=Inan;additional:=INVAR;)
+<с(,)? [123456789]([0123456789])*.*> -> (POS:=NOUN;Gender:=Neut;Animacy:=Inan;)
 
 // с мс {
 //   с мс 6*а
 // }
 
-<с мс.*> -> (POS:=N;Gender:=Neut;Animacy:=Inan;additional:=PRN;)
+<с мс.*> -> (POS:=NOUN;Gender:=Neut;Animacy:=Inan;additional:=PRN;)
 
 // с п {
 //   с п 1а
@@ -1745,7 +1745,7 @@
 //   с п 4в
 // }
 
-<с п.*> -> (POS:=N;Gender:=Neut;Animacy:=Inan;additional:=ADJI;)
+<с п.*> -> (POS:=NOUN;Gender:=Neut;Animacy:=Inan;additional:=ADJI;)
 
 
 // св {
