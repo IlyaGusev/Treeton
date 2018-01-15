@@ -140,6 +140,7 @@ class GovernmentModel(object):
     grammemes = attr.ib(default=attr.Factory(set))
     agree_categories = attr.ib(default=attr.Factory(set))
     prefixes = attr.ib(default=attr.Factory(set))
+    indecl = attr.ib(default=False)
 
 
 class PhraseGrammar(object):
@@ -344,6 +345,7 @@ class PhraseGrammar(object):
             gov_model.optional = raw_gov_model.get('optional', False)
             gov_model.orientation = raw_gov_model.get('orientation', None)
             gov_model.max_cardinality = raw_gov_model.get('max_cardinality', 1)
+            gov_model.indecl = raw_gov_model.get('indecl', False)
 
             agree = raw_gov_model.get('agree')
 
@@ -351,14 +353,6 @@ class PhraseGrammar(object):
                 assert isinstance(agree, list)
 
                 gov_model.agree_categories = set(agree)
-
-                for cat in gov_model.agree_categories:
-                    if cat not in ['case', 'number', 'gender']:
-                        raise ValueError(
-                            'Agreement category %s is not allowed. Error in phrase %s.' % (
-                                cat, phrase_description.name
-                            )
-                        )
 
             gramm = raw_gov_model.get('gramm')
 
@@ -388,6 +382,7 @@ class PhraseGrammar(object):
             old_model.grammemes.update(gov_model.grammemes)
             old_model.agree_categories.update(gov_model.agree_categories)
             old_model.prefixes.update(gov_model.prefixes)
+            old_model.indecl = gov_model.indecl
 
 
 @attr.s
@@ -476,6 +471,9 @@ class PhraseGenerator(object):
         yield None
 
     def _update_grammemes(self, phrase, new_grammemes):
+        if phrase.grammemes is None:
+            return
+
         new_known_categories = set()
         for gr in new_grammemes:
             cat = self._morph_engine.get_category_for_grammeme(gr)
@@ -575,8 +573,9 @@ class PhraseGenerator(object):
             self._update_grammemes(phrase, new_grammemes)
 
         if phrase.lex:
-            self._calculate_morph_an_results(phrase)
-            if phrase.morph_an_results:
+            if phrase.grammemes is not None:
+                self._calculate_morph_an_results(phrase)
+            if phrase.grammemes is not None and phrase.morph_an_results:
                 inflection_variants = []
                 for morph_an_result in phrase.morph_an_results:
                     inflection_variants += self._morph_engine.synthesise(
@@ -776,9 +775,13 @@ class PhraseGenerator(object):
 
                             gov_model = result.root.phrase_description.gov_models.get(semantic_role)
                             child_phrase.agree_categories = set(gov_model.agree_categories)
-                            self._update_grammemes(child_phrase, gov_model.grammemes)
+                            if gov_model.indecl:
+                                child_phrase.grammemes = None
+                            else:
+                                self._update_grammemes(child_phrase, gov_model.grammemes)
                             if gov_model.prefixes:
                                 child_phrase.prefix = random.choice(list(gov_model.prefixes))
+
                             child_phrase.orientation = gov_model.orientation
                             child_phrase.parent = result
                             child_phrases.append(child_phrase)

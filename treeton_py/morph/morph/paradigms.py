@@ -1,7 +1,7 @@
 import attr
 import logging
 
-from morph_interface import MorphEngine, MorphAnResult
+from .morph_interface import MorphEngine, MorphAnResult
 
 
 @attr.s
@@ -157,6 +157,9 @@ class MorphDictionary(MorphEngine):
         },
         'mood': {
             'cnd', 'imp', 'ind'
+        },
+        'animacy': {
+            'anim', 'inan'
         }
     }
 
@@ -180,12 +183,22 @@ class MorphDictionary(MorphEngine):
         return [
             pe.form
             for pe in paradigm.elements
-            if gramm.issubset(pe.gramm.union(pe.parent_paradigm.gramm))
+            if gramm.issubset(self.count_gramm(pe))
         ]
 
     @staticmethod
     def normalize(s):
         return s.strip().lower()
+
+    @staticmethod
+    def count_gramm(paradigm_element):
+        gramm = set(paradigm_element.gramm).union(paradigm_element.parent_paradigm.gramm)
+
+        if 'adj' in gramm and 'pos' in gramm and 'inan' not in gramm and 'anim' not in gramm:
+            gramm.add('inan')
+            gramm.add('anim')
+
+        return frozenset(gramm)
 
     def analyse(self, word):
         return [
@@ -193,7 +206,7 @@ class MorphDictionary(MorphEngine):
                 paradigm_id=pe.parent_paradigm.id,
                 lemma=pe.parent_paradigm.lemma,
                 accent=pe.accent,
-                gramm=pe.gramm.union(pe.parent_paradigm.gramm)
+                gramm=self.count_gramm(pe)
             )
             for pe in self._paradigm_elements.get(self.normalize(word), [])
         ]

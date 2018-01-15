@@ -5,7 +5,7 @@ import difflib
 import pickle
 import _pickle
 
-from paradigms import MorphDictionary
+from .paradigms import MorphDictionary
 
 
 class ParadigmsParser:

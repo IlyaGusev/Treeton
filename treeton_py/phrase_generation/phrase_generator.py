@@ -6,6 +6,7 @@ import codecs
 import argparse
 import random
 import datetime
+import attr
 
 from phrase_generation_framework import PhraseGrammar, PhraseGenerator
 from morph.paradigms_parser import ParadigmsParser
@@ -90,36 +91,36 @@ def random_datetime_raw(only_date):
     return result
 
 
-parsed_text_lists = {}
+@attr.s
+class SamplingMemory:
+    parsed_text_lists = {}
+    parsed_json_lists = {}
 
 
-def sample_from_file(params):
+def sample_from_file(params, config_path, sampling_memory):
     big_list = []
     for p in params['path']:
-        path = os.path.join(os.path.dirname(args.config_path), p)
+        path = os.path.join(os.path.dirname(config_path), p)
 
-        if path not in parsed_text_lists:
+        if path not in sampling_memory.parsed_text_lists:
             l = []
             with codecs.open(path, 'r', encoding='utf-8') as f_in:
                 for line in f_in:
                     line = line.strip()
                     if line:
                         l.append(line)
-            parsed_text_lists[path] = l
+                        sampling_memory.parsed_text_lists[path] = l
 
-        big_list += parsed_text_lists[path]
+        big_list += sampling_memory.parsed_text_lists[path]
     return random.choice(big_list)
 
 
-parsed_json_lists = {}
-
-
-def sample_from_json(params):
+def sample_from_json(params, config_path, sampling_memory):
     big_list = []
     for p in params['path']:
-        path = os.path.join(os.path.dirname(args.config_path), p)
+        path = os.path.join(os.path.dirname(config_path), p)
 
-        if path not in parsed_json_lists:
+        if path not in sampling_memory.parsed_json_lists:
             l = []
             with codecs.open(path, 'r', encoding='utf-8') as f_in:
                 list_of_slot_values = json.load(f_in)
@@ -127,33 +128,114 @@ def sample_from_json(params):
                     value = slot_value.get('value')
                     if value:
                         l.append(value)
-            parsed_json_lists[path] = l
+            sampling_memory.parsed_json_lists[path] = l
 
-        big_list += parsed_json_lists[path]
+        big_list += sampling_memory.parsed_json_lists[path]
     return random.choice(big_list)
 
 
-def choose_value(task, params):
+def choose_value(task, params, config_path, sampling_memory):
     if task == SAMPLE_FROM_LIST:
         return random.choice(params)
     elif task == SAMPLE_FROM_FILE:
-        return sample_from_file(params)
+        return sample_from_file(params, config_path, sampling_memory)
     elif task == SAMPLE_FROM_JSON_LIST:
-        return sample_from_json(params)
+        return sample_from_json(params, config_path, sampling_memory)
     elif task == SAMPLE_FROM_DATETIME_RAW:
         r = random_datetime_raw(params.get('only_date', False))
         return r
 
 
-def prepare_form(form):
+def prepare_form(form, config_path, sampling_memory):
     result = {}
     for k, v in form.items():
         if isinstance(v, list) and v and v[0] in POSSIBLE_TASKS:
-            v = choose_value(v[0], v[1])
+            v = choose_value(v[0], v[1], config_path, sampling_memory)
         if v:
             result[k] = v
     return result
 
+
+class Generator:
+    def __init__(self, morph_path):
+        paradigms_parser = ParadigmsParser()
+        self._morph_dict = paradigms_parser.load_dict_from_directory(morph_path, light_weight=True)
+
+    def generate(self, phrase_grammar_path, config_path, out_path, top_path, shortest_top_size):
+        phrase_generator = PhraseGenerator(PhraseGrammar(phrase_grammar_path), self._morph_dict)
+
+        shortest_toplist = []
+
+        config_file = open(config_path)
+        config = json.load(config_file)
+
+        def context_generator():
+            for form in config['form']:
+                for _ in range(config['number_of_iterations']):
+                    for pid in config['phrase_ids']:
+                        yield (form, pid)
+
+        unique_phrases = set()
+        sampling_memory = SamplingMemory()
+
+        n_tries = 0
+        for source_form, phrase_id in context_generator():
+            while True:
+                try:
+                    prepared_form = prepare_form(source_form, config_path, sampling_memory)
+
+                    phrases_iterator = phrase_generator.generate(phrase_id, context=prepared_form)
+                    structured_phrase = next(phrases_iterator)
+                    if not structured_phrase:
+                        continue
+
+                    phrase = phrase_generator.render_string(structured_phrase)
+
+                    if phrase in unique_phrases:
+                        if n_tries > 100:
+                            break
+                        n_tries += 1
+                        continue
+                    n_tries = 0
+                    unique_phrases.add(phrase)
+                    shortest_toplist.append((prepared_form, phrase,))
+
+                    break
+                except Exception as e:
+                    print('skipping form due to error: %s' % e)
+
+        detected_unknowns = phrase_generator.get_detected_unknown_words()
+        if detected_unknowns:
+            logger.warning('Unknown words were detected during generation: %s' % detected_unknowns)
+
+        shortest_toplist.sort(key=lambda t: len(t[1]))
+
+        with codecs.open(out_path, 'w', encoding='utf-8') as f_out:
+            timestamp = datetime.datetime.now().strftime("%d.%m.%Y, %H:%M:%S")
+            f_out.write(
+                '# This file was autogenerated by phrase_generator.py\n'
+                '# using grammar from %s on %s\n\n' % (phrase_grammar_path, timestamp)
+            )
+            for _, phrase in shortest_toplist:
+                f_out.write(phrase)
+                f_out.write('\n')
+
+        logger.info('%d phrases were stored to %s' % (len(shortest_toplist), out_path))
+        logger.info('10 random phrases:\n\t%s' % (
+                '\n\t'.join([phrase for (_, phrase) in random.choices(shortest_toplist, k=10)])
+            )
+        )
+
+        if top_path:
+            shortest_toplist = shortest_toplist[0:shortest_top_size]
+
+            toplist_json = json.dumps(
+                shortest_toplist, sort_keys=False, ensure_ascii=False, indent=2, separators=(',', ': ')
+            )
+            with codecs.open(top_path, 'w', encoding='utf8') as f:
+                f.write(toplist_json + '\n')
+
+            logger.info('%d form-phrase pairs were stored to %s' % (len(shortest_top_size), top_path))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Generate phrases using phrase generation framework.\n',
@@ -171,73 +253,14 @@ if __name__ == "__main__":
     FORMAT = '%(asctime)-15s %(message)s'
     logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 
-    config_file = open(args.config_path)
-    config = json.load(config_file)
+    generator = Generator('/Users/starost/projects/4yandex27082017/data')
+    do_again = True
+    while do_again:
+        generator.generate(args.phrase_grammar_path, args.config_path, args.out_path, args.top_path,
+                           args.shortest_top_size)
+        yes_or_no = input('\nGenerate again? ')
+        do_again = yes_or_no.strip().lower() in ['yes', 'y']
 
-    paradigms_parser = ParadigmsParser()
-    morph_dict_4yandex = paradigms_parser.load_dict_from_directory(
-        '/Users/starost/projects/4yandex27082017/data', light_weight=True
-    )
 
-    phrase_generator = PhraseGenerator(PhraseGrammar(args.phrase_grammar_path), morph_dict_4yandex)
 
-    shortest_toplist = []
 
-    def context_generator():
-        for form in config['form']:
-            for _ in range(config['number_of_iterations']):
-                for pid in config['phrase_ids']:
-                    yield (form, pid)
-
-    unique_phrases = set()
-
-    n_tries = 0
-    for source_form, phrase_id in context_generator():
-        while True:
-            try:
-                prepared_form = prepare_form(source_form)
-
-                phrases_iterator = phrase_generator.generate(phrase_id, context=prepared_form)
-                structured_phrase = next(phrases_iterator)
-                if not structured_phrase:
-                    continue
-
-                phrase = phrase_generator.render_string(structured_phrase)
-
-                if phrase in unique_phrases:
-                    if n_tries > 100:
-                        break
-                    n_tries += 1
-                    continue
-                n_tries = 0
-                unique_phrases.add(phrase)
-                shortest_toplist.append((prepared_form, phrase,))
-
-                break
-            except Exception as e:
-                print('skipping form due to error: %s' % e)
-
-    detected_unknowns = phrase_generator.get_detected_unknown_words()
-    if detected_unknowns:
-        logger.warning('Unknown words were detected during generation: %s' % detected_unknowns)
-
-    shortest_toplist.sort(key=lambda t: len(t[1]))
-
-    with codecs.open(args.out_path, 'w', encoding='utf-8') as f_out:
-        timestamp = datetime.datetime.now().strftime("%d.%m.%Y, %H:%M:%S")
-        f_out.write(
-            '# This file was autogenerated by phrase_generator.py\n'
-            '# using grammar from %s on %s\n\n' % (args.phrase_grammar_path, timestamp)
-        )
-        for _, phrase in shortest_toplist:
-            f_out.write(phrase)
-            f_out.write('\n')
-
-    if args.top_path:
-        shortest_toplist = shortest_toplist[0:args.shortest_top_size]
-
-        toplist_json = json.dumps(
-            shortest_toplist, sort_keys=False, ensure_ascii=False, indent=2, separators=(',', ': ')
-        )
-        with codecs.open(args.top_path, 'w', encoding='utf8') as f:
-            f.write(toplist_json + '\n')

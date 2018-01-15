@@ -70,7 +70,7 @@ conj_zero:
   gov:
     conjunct:
       max_cardinality: 5
-      agree: [case,number,gender]
+      agree: [case,number,gender,animacy]
 
 abstract_clause:
   gov:
@@ -81,7 +81,7 @@ imperative_clause:
   extends: abstract_clause
   gov:
     imperative:
-      gramm: [verb,fin,imp]
+      gramm: [verb,fin,act,imp]
 
 infinitive_clause:
   extends: abstract_clause
@@ -98,7 +98,8 @@ bracketed:
 #    left: '"'
 #    right: '"'
   gov:
-    content: {}
+    content:
+      indecl: true
 
 abstract_entity:
   gov:
@@ -116,12 +117,12 @@ abstract_action:
 
 abstract_object:
   extends: abstract_entity
-  gramm: [noun,nom]
+  gramm: [noun,nom,sing]
   gov:
     attr:
       optional: true
       max_cardinality: 5
-      agree: [case,number,gender]
+      agree: [case,number,gender,animacy]
       gramm: [adj]
     component:
       gramm: [noun,gen]
