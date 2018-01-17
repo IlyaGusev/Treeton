@@ -77,13 +77,16 @@ track_keyword:
     - произведение
 
 track_name:
-  - root:
+  onto:
+    type: artist
+  content:
+    root:
       extends: common.bracketed
     tag: track
     content:
-      lookup: track
+      lookup: name
 
-track:
+track_mention:
   - root: track_keyword
     name: track_name
   - track_name
@@ -96,20 +99,23 @@ album_keyword:
     - диск
 
 album_name:
-  - root:
+  onto:
+    type: artist
+  content:
+    root:
       extends: common.bracketed
     tag: album
     content:
-      lookup: album
+      lookup: name
 
-album:
+album_mention:
   - root: album_keyword
     name: album_name
   - album_name
 
 artist_keyword:
   extends: common.abstract_named_object
-  content_variants:
+  content:
     - lex:
       - группа
       - группировка
@@ -133,13 +139,16 @@ artist_keyword:
           lex: музыкальный
 
 artist_name:
-  - root:
+  onto:
+    type: artist
+  content:
+    root:
       extends: common.bracketed
     tag: artist
     content:
-      lookup: artist
+      lookup: name
 
-artist:
+artist_mention:
   - root: artist_keyword
     name:
       - artist_name
@@ -147,7 +156,7 @@ artist:
 
 playlist_keyword:
   extends: common.abstract_named_object
-  content_variants:
+  content:
     - lex:
       - плейлист
       - подборка
@@ -160,40 +169,62 @@ playlist_keyword:
           lex: песня
 
 playlist_name:
-  - root:
+  onto:
+    type: playlist
+  content:
+    root:
       extends: common.bracketed
     tag: playlist
     content:
-      lookup: playlist
+      lookup: name
 
-playlist:
+playlist_mention:
   - root: playlist_keyword
     name:
       - playlist_name
   - playlist_name
 
 complex_music_entity:
-  root: common.conj_zero
-  conjunct:
-    - artist
-    - album
-    - track
-    - playlist
+  onto:
+    type: music_entity
+    component: {}
+  content:
+    root: common.conj_zero
+    conjunct:
+      reference: component
+      content:
+        - artist_mention
+        - album_mention
+        - track_mention
+        - playlist_mention
 
 all_music:
-  - abstract_music
-  - complex_music_entity
+  onto:
+    type: music_entity
+  content:
+    - abstract_music
+    - complex_music_entity
 
 turn_music_on:
-  - root: common.infinitive_clause
-    infinitive:
-      root: all_music_verbs
-      object: all_music
-  - root: common.imperative_clause
-    imperative:
-      - root: all_launch_verbs
-        object: all_music
-  - root: common.abstract_clause
-    aux:
-      - all_music_verbs
-      - all_music
+  onto:
+    type: switch_on
+    target:
+      type: music_entity
+  content:
+    - root: common.infinitive_clause
+      infinitive:
+        root: all_music_verbs
+        object:
+          reference: target
+          content: all_music
+    - root: common.imperative_clause
+      imperative:
+        root: all_launch_verbs
+        object:
+          reference: target
+          content: all_music
+    - root: common.abstract_clause
+      aux:
+        - all_music_verbs
+        - reference: target
+          content: all_music

@@ -24,13 +24,16 @@ def list_data_files(directory):
         if os.path.isfile(path):
             yield name, path
 
+# TODO выпилить label_formula
+
 
 @attr.s
 class PhraseDescription(object):
     name = attr.ib()
+    onto = attr.ib(default=attr.Factory(dict))
     tag = attr.ib(default=None)
     is_inline = attr.ib(default=False)
-    predecessors = attr.ib(default=attr.Factory(list))
+    predecessors = attr.ib(default=attr.Factory(set))
     gov_models = attr.ib(default=attr.Factory(dict))
     punctuation_info = attr.ib(default=attr.Factory(dict))
     grammemes = attr.ib(default=attr.Factory(set))
@@ -51,7 +54,7 @@ class PhraseDescription(object):
 
 @attr.s
 class PhraseDescriptionDisjunctive(PhraseDescription):
-    phrases_variants = attr.ib(default=attr.Factory(list))
+    phrases_variants = attr.ib(default=attr.Factory(list))  # list of PhraseDescriptionWithReference
 
     def calculate_label_formulae(self):
         self.label_formula = LabelFormula('or', *[phrase.label_formula for phrase in self.phrases_variants])
@@ -59,9 +62,9 @@ class PhraseDescriptionDisjunctive(PhraseDescription):
 
 @attr.s
 class PhraseDescriptionComposite(PhraseDescription):
-    root_variants = attr.ib(default=attr.Factory(list))
+    root_variants = attr.ib(default=attr.Factory(list))  # list of PhraseDescriptionWithReference
     root_formulae = attr.ib(default=attr.Factory(list))
-    children_info = attr.ib(default=attr.Factory(dict))
+    children_info = attr.ib(default=attr.Factory(dict))  # semantic role -> list of PhraseDescriptionWithReference
     children_formulae = attr.ib(default=attr.Factory(dict))
 
     def calculate_label_formulae(self):
@@ -132,20 +135,40 @@ class PhraseDescriptionLex(PhraseDescription):
 
 
 @attr.s
+class PhraseDescriptionWithReference(object):
+    phrase_description = attr.ib()
+    reference = attr.ib(default=None)
+
+
+@attr.s(hash=True)
 class GovernmentModel(object):
     name = attr.ib()
     optional = attr.ib(default=False)
     orientation = attr.ib(default=None)
     max_cardinality = attr.ib(default=1)
-    grammemes = attr.ib(default=attr.Factory(set))
-    agree_categories = attr.ib(default=attr.Factory(set))
-    prefixes = attr.ib(default=attr.Factory(set))
+    grammemes = attr.ib(default=attr.Factory(frozenset))
+    agree_categories = attr.ib(default=attr.Factory(frozenset))
+    prefixes = attr.ib(default=attr.Factory(frozenset))
     indecl = attr.ib(default=False)
 
 
-class PhraseGrammar(object):
-    # TODO: safe loop detection
+@attr.s(hash=True)
+class PhraseDescriptionKey(object):
+    full_name = attr.ib()
+    context = attr.ib(default=None)
 
+
+@attr.s(hash=True)
+class PhraseDescriptionContext(object):
+    tag = attr.ib(default=None)
+    predecessors = attr.ib(default=attr.Factory(frozenset))
+    gov_models = attr.ib(default=attr.Factory(tuple))
+    onto = attr.ib(default=attr.Factory(tuple))
+    punctuation_info = attr.ib(default=attr.Factory(tuple))
+    grammemes = attr.ib(default=attr.Factory(frozenset))
+
+
+class PhraseGrammar(object):
     def __init__(self, grammar_path):
         self._phrase_descriptions = {}
         self._raw_phrase_data = None
@@ -168,36 +191,14 @@ class PhraseGrammar(object):
                 self._raw_phrase_data[full_name] = phrase_raw_data
 
         for full_name in self._raw_phrase_data.keys():
-            self.get_phrase_description(full_name)
-
-    def get_phrase_description(self, full_name, base_phrase=None):
-        phrase_description = None if base_phrase else self._phrase_descriptions.get(full_name)
-
-        if phrase_description:
-            return phrase_description
-
-        raw_phrase_description = self._raw_phrase_data.get(full_name)
-
-        if raw_phrase_description is None:
-            raise LookupError('Unable to find phrase %s' % full_name)
-
-        phrase_description = self._load_phrase_description(full_name, raw_phrase_description, base_phrase)
-        if not base_phrase:
-            self._phrase_descriptions[full_name] = phrase_description
-        return phrase_description
+            self.get_phrase_description(PhraseDescriptionKey(full_name))
 
     @staticmethod
-    def _globalize_name(context_name, name):
-        if '.' not in name:
-            name = context_name.split('.')[0] + '.' + name
-
-        return name
-
-    def _load_phrase_description(self, full_name, data, base_phrase=None):
-        if isinstance(data, dict):
-            lex = data.get('lex')
-            lookup = data.get('lookup')
-            content_variants = data.get('content_variants')
+    def _create_phrase_description(raw_phrase_description, full_name):
+        if isinstance(raw_phrase_description, dict):
+            content_variants = raw_phrase_description.get('content_variants')
+            lex = raw_phrase_description.get('lex')
+            lookup = raw_phrase_description.get('lookup')
 
             if lex:
                 assert not content_variants and not lookup
@@ -209,13 +210,60 @@ class PhraseGrammar(object):
                 phrase_description = PhraseDescriptionDisjunctive(full_name)
             else:
                 phrase_description = PhraseDescriptionComposite(full_name)
+        else:
+            phrase_description = PhraseDescriptionDisjunctive(full_name)
 
-            if base_phrase:
-                phrase_description.predecessors = list(base_phrase.predecessors)
-                phrase_description.gov_models = deepcopy(base_phrase.gov_models)
-                phrase_description.tag = base_phrase.tag
-                phrase_description.punctuation_info = dict(base_phrase.punctuation_info)
-                phrase_description.grammemes = set(base_phrase.grammemes)
+        return phrase_description
+
+    def get_phrase_description(self, key):
+        phrase_description = self._phrase_descriptions.get(key)
+
+        if phrase_description:
+            return phrase_description
+
+        raw_phrase_description = self._raw_phrase_data.get(key.full_name)
+
+        if raw_phrase_description is None:
+            raise LookupError('Unable to find phrase %s' % key.full_name)
+
+        phrase_description = self._create_phrase_description(raw_phrase_description, key.full_name)
+        self._phrase_descriptions[key] = phrase_description
+
+        self._load_phrase_description(phrase_description, raw_phrase_description, key.context)
+
+        return phrase_description
+
+    @staticmethod
+    def _globalize_name(context_name, name):
+        if '.' not in name:
+            name = context_name.split('.')[0] + '.' + name
+
+        return name
+
+    @staticmethod
+    def _system_of_tuples_to_dict(data):
+        if not isinstance(data, tuple):
+            return deepcopy(data)
+
+        res = {}
+        for k, v in data:
+            res[k] = PhraseGrammar._system_of_tuples_to_dict(v)
+
+        return res
+
+    def _load_phrase_description(self, phrase_description, data, context):
+        if isinstance(data, dict):
+            lex = data.get('lex')
+            lookup = data.get('lookup')
+            content_variants = data.get('content_variants')
+
+            if context:
+                phrase_description.predecessors = set(context.predecessors)
+                phrase_description.gov_models = self._system_of_tuples_to_dict(context.gov_models)
+                phrase_description.onto = self._system_of_tuples_to_dict(context.onto)
+                phrase_description.tag = context.tag
+                phrase_description.punctuation_info = self._system_of_tuples_to_dict(context.punctuation_info)
+                phrase_description.grammemes = set(context.grammemes)
 
             predecessors = data.get('extends')
             if predecessors:
@@ -224,8 +272,8 @@ class PhraseGrammar(object):
 
                 for predecessor_name in predecessors:
                     assert isinstance(predecessor_name, str)
-                    predecessor_name = self._globalize_name(full_name, predecessor_name)
-                    predecessor_phrase_descr = self.get_phrase_description(predecessor_name)
+                    predecessor_name = self._globalize_name(phrase_description.name, predecessor_name)
+                    predecessor_phrase_descr = self.get_phrase_description(PhraseDescriptionKey(predecessor_name))
 
                     if predecessor_phrase_descr.tag:
                         phrase_description.tag = predecessor_phrase_descr.tag
@@ -233,14 +281,20 @@ class PhraseGrammar(object):
                         phrase_description.punctuation_info = dict(predecessor_phrase_descr.punctuation_info)
 
                     phrase_description.grammemes.update(predecessor_phrase_descr.grammemes)
-
-                    self._merge_gov_models(phrase_description, predecessor_phrase_descr.gov_models)
-                    phrase_description.predecessors.append(predecessor_phrase_descr)
+                    self._merge_gov_models(phrase_description.gov_models, predecessor_phrase_descr.gov_models)
+                    self._merge_onto(phrase_description.onto, predecessor_phrase_descr.onto)
+                    phrase_description.predecessors.add(predecessor_name)
 
             raw_gov_models = data.get('gov')
 
             if raw_gov_models:
                 self._load_gov_models(phrase_description, raw_gov_models)
+
+            onto = data.get('onto')
+
+            if onto:
+                assert isinstance(onto, dict)
+                self._merge_onto(phrase_description.onto, onto)
 
             tag = data.get('tag')
             if tag:
@@ -269,54 +323,68 @@ class PhraseGrammar(object):
 
                 phrase_description.lookup = lookup.split('.')
             elif content_variants:
-                if predecessors or raw_gov_models or tag or base_phrase or punctuation_info:
-                    base_phrase = phrase_description
-                else:
-                    base_phrase = None
+                if predecessors or raw_gov_models or tag or punctuation_info or gramm or context or onto:
+                    context = PhraseDescriptionContext(
+                        predecessors=frozenset(phrase_description.predecessors),
+                        grammemes=frozenset(phrase_description.grammemes),
+                        gov_models=tuple(phrase_description.gov_models.items()),
+                        punctuation_info=tuple(phrase_description.punctuation_info.items()),
+                        tag=phrase_description.tag
+                    )
+
                 phrase_description.phrases_variants = self._load_phrases_from_list(
-                    full_name, content_variants, base_phrase
+                    phrase_description.name, content_variants, context
                 )
             else:
                 self._load_composite_phrase(phrase_description, data)
         else:
-            phrase_description = PhraseDescriptionDisjunctive(full_name)
             assert data
+            phrase_description.phrases_variants = self._load_phrases_from_list(phrase_description.name, data, context)
 
-            phrase_description.phrases_variants = self._load_phrases_from_list(full_name, data, base_phrase)
+        logger.info('%s successfully loaded.' % phrase_description.name)
 
+        # TODO циклы в calculate_label_formulae
         phrase_description.calculate_label_formulae()
-        logger.info('%s successfully loaded.' % full_name)
         logger.debug('Label formula is %s' % phrase_description.label_formula)
 
         return phrase_description
 
-    def _load_phrases_from_list(self, context_name, phrase_list, base_phrase=None):
+    def _load_phrases_from_list(self, outer_phrase_name, phrase_list, context=PhraseDescriptionContext()):
         if not isinstance(phrase_list, list):
             phrase_list = [phrase_list]
 
         result = []
 
         for raw_description in phrase_list:
+            reference = None
             if isinstance(raw_description, str):
                 phrase_description = self.get_phrase_description(
-                    self._globalize_name(context_name, raw_description),
-                    base_phrase
+                    PhraseDescriptionKey(
+                        full_name=self._globalize_name(outer_phrase_name, raw_description),
+                        context=context
+                    )
                 )
             else:
-                assert isinstance(raw_description, dict), 'raw_description is not a dict, phrase %s' % context_name
+                assert isinstance(raw_description, dict), 'raw_description is not a dict, phrase %s' % outer_phrase_name
                 # reading inline phrase_description
-
-                phrase_description = self._load_phrase_description(
-                    '%s.inline_%d' % (context_name, self._inline_counter),
+                phrase_description = self._create_phrase_description(
                     raw_description,
-                    base_phrase
+                    '%s.inline_%d' % (outer_phrase_name, self._inline_counter)
+                )
+                phrase_description = self._load_phrase_description(
+                    phrase_description,
+                    raw_description,
+                    context
                 )
 
                 phrase_description.is_inline = True
+                reference = raw_description.get('reference')
+                if reference:
+                    assert isinstance(reference, str)
 
                 self._inline_counter += 1
 
-            result.append(phrase_description)
+            result.append(PhraseDescriptionWithReference(phrase_description, reference))
 
         return result
 
@@ -352,37 +420,53 @@ class PhraseGrammar(object):
             if agree:
                 assert isinstance(agree, list)
 
-                gov_model.agree_categories = set(agree)
+                gov_model.agree_categories = frozenset(agree)
 
             gramm = raw_gov_model.get('gramm')
 
             if gramm:
                 assert isinstance(gramm, list)
-                gov_model.grammemes = set(gramm)
+                gov_model.grammemes = frozenset(gramm)
 
             prefix = raw_gov_model.get('prefix')
             if prefix:
                 assert isinstance(prefix, list)
-                gov_model.prefixes = set(prefix)
+                gov_model.prefixes = frozenset(prefix)
 
             gov_models[semantic_role] = gov_model
-        self._merge_gov_models(phrase_description, gov_models)
+        self._merge_gov_models(phrase_description.gov_models, gov_models)
 
     @staticmethod
-    def _merge_gov_models(phrase_description, gov_models):
+    def _merge_gov_models(old_gov_models, gov_models):
         for semantic_role, gov_model in gov_models.items():
-            old_model = phrase_description.gov_models.get(semantic_role)
+            old_model = old_gov_models.get(semantic_role)
             if not old_model:
                 old_model = GovernmentModel(semantic_role)
-                phrase_description.gov_models[semantic_role] = old_model
+                old_gov_models[semantic_role] = old_model
 
             old_model.optional = gov_model.optional
             old_model.orientation = gov_model.orientation
             old_model.max_cardinality = gov_model.max_cardinality
-            old_model.grammemes.update(gov_model.grammemes)
-            old_model.agree_categories.update(gov_model.agree_categories)
-            old_model.prefixes.update(gov_model.prefixes)
+            old_model.grammemes = old_model.grammemes.union(gov_model.grammemes)
+            old_model.agree_categories = old_model.agree_categories.union(gov_model.agree_categories)
+            old_model.prefixes = old_model.prefixes.union(gov_model.prefixes)
             old_model.indecl = gov_model.indecl
+
+    @staticmethod
+    def _merge_onto(old_onto, onto):
+        for k, v in onto.items():
+            old_v = old_onto.get(k)
+
+            if old_v:
+                if not isinstance(v, dict) or not isinstance(old_v, dict):
+                    raise RuntimeError(
+                        'Cannot merge non-dict values %s and %s during merging ontology contexts %s and %s' % (
+                            old_v, v, old_onto, onto
+                        )
+                    )
+                PhraseGrammar._merge_onto(old_v, v)
+            else:
+                old_onto[k] = deepcopy(v)
 
 
 @attr.s
@@ -449,7 +533,7 @@ class PhraseGenerator(object):
         return list(self._detected_unknown_words)
 
     def generate(self, full_phrase_name, context, limit=1):
-        phrase_description = self._grammar.get_phrase_description(full_phrase_name)
+        phrase_description = self._grammar.get_phrase_description(PhraseDescriptionKey(full_phrase_name))
         if not phrase_description:
             raise LookupError('Phrase %s is not defined' % full_phrase_name)
 
