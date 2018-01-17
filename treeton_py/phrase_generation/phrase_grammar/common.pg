@@ -98,7 +98,7 @@ bracketed:
 #    left: '"'
 #    right: '"'
   gov:
-    content:
+    inner:
       indecl: true
 
 abstract_entity:

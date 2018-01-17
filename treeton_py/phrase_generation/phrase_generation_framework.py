@@ -196,7 +196,7 @@ class PhraseGrammar(object):
     @staticmethod
     def _create_phrase_description(raw_phrase_description, full_name):
         if isinstance(raw_phrase_description, dict):
-            content_variants = raw_phrase_description.get('content_variants')
+            content_variants = raw_phrase_description.get('content')
             lex = raw_phrase_description.get('lex')
             lookup = raw_phrase_description.get('lookup')
 
@@ -251,11 +251,18 @@ class PhraseGrammar(object):
 
         return res
 
+    @staticmethod
+    def _dict_to_system_of_tuples(data):
+        if not isinstance(data, dict):
+            return deepcopy(data)
+
+        return tuple(sorted([(k, PhraseGrammar._dict_to_system_of_tuples(v)) for k, v in data.items()]))
+
     def _load_phrase_description(self, phrase_description, data, context):
         if isinstance(data, dict):
             lex = data.get('lex')
             lookup = data.get('lookup')
-            content_variants = data.get('content_variants')
+            content_variants = data.get('content')
 
             if context:
                 phrase_description.predecessors = set(context.predecessors)
@@ -326,9 +333,10 @@ class PhraseGrammar(object):
                 if predecessors or raw_gov_models or tag or punctuation_info or gramm or context or onto:
                     context = PhraseDescriptionContext(
                         predecessors=frozenset(phrase_description.predecessors),
+                        onto=self._dict_to_system_of_tuples(phrase_description.onto),
                         grammemes=frozenset(phrase_description.grammemes),
-                        gov_models=tuple(phrase_description.gov_models.items()),
-                        punctuation_info=tuple(phrase_description.punctuation_info.items()),
+                        gov_models=self._dict_to_system_of_tuples(phrase_description.gov_models),
+                        punctuation_info=self._dict_to_system_of_tuples(phrase_description.punctuation_info),
                         tag=phrase_description.tag
                     )
 
@@ -384,7 +392,9 @@ class PhraseGrammar(object):
 
                 self._inline_counter += 1
 
-            result.append(PhraseDescriptionWithReference(phrase_description, reference))
+            # TODO вернуть после рефакторинга
+            result.append(phrase_description)
+            #result.append(PhraseDescriptionWithReference(phrase_description, reference))
 
         return result
 
@@ -398,7 +408,9 @@ class PhraseGrammar(object):
                 raise ValueError('root section for phrase %s is empty' % phrase_description.name)
 
         for semantic_role, raw_children_variants in data.items():
-            if semantic_role in {'root', 'extends', 'gov', 'tag', 'punctuation', 'gramm'}:
+            if semantic_role in {
+                'root', 'extends', 'gov', 'tag', 'punctuation', 'gramm', 'onto', 'reference', 'content'
+            }:
                 continue
 
             phrase_description.children_info[semantic_role] = self._load_phrases_from_list(
@@ -456,6 +468,9 @@ class PhraseGrammar(object):
     def _merge_onto(old_onto, onto):
         for k, v in onto.items():
             old_v = old_onto.get(k)
+
+            if old_v == v:
+                continue
 
             if old_v:
                 if not isinstance(v, dict) or not isinstance(old_v, dict):
@@ -738,7 +753,27 @@ class PhraseGenerator(object):
 
         return current_dict
 
+    @staticmethod
+    def _onto_match(current_onto, check_onto):
+        for k, v in check_onto.items():
+            current_v = current_onto.get(k)
+            if not current_v:
+                return False
+
+            if not v:
+                continue
+
+            if isinstance(v,dict):
+                if not isinstance(current_v, dict) or not PhraseGenerator._onto_match(current_v,v):
+                    return False
+            elif v != current_v:
+                return False
+
+        return True
+
     def _choose(self, phrase_description, context, target_labels):
+        # TODO переписать с использованием onto и reference (без label_formula)
+
         if isinstance(phrase_description, PhraseDescriptionDisjunctive):
             valid_variants = [
                 v

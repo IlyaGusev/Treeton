@@ -78,13 +78,13 @@ track_keyword:
 
 track_name:
   onto:
-    type: artist
+    type: track
   content:
     root:
       extends: common.bracketed
     tag: track
-    content:
-      lookup: name
+    inner:
+      lookup: track
 
 track_mention:
   - root: track_keyword
@@ -100,13 +100,13 @@ album_keyword:
 
 album_name:
   onto:
-    type: artist
+    type: album
   content:
     root:
       extends: common.bracketed
     tag: album
-    content:
-      lookup: name
+    inner:
+      lookup: album
 
 album_mention:
   - root: album_keyword
@@ -145,8 +145,8 @@ artist_name:
     root:
       extends: common.bracketed
     tag: artist
-    content:
-      lookup: name
+    inner:
+      lookup: artist
 
 artist_mention:
   - root: artist_keyword
@@ -175,8 +175,10 @@ playlist_name:
     root:
       extends: common.bracketed
     tag: playlist
-    content:
-      lookup: name
+    inner:
+      lookup: playlist
+
+# TODO поменять lookup: * на lookup: name
 
 playlist_mention:
   - root: playlist_keyword
