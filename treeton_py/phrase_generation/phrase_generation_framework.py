@@ -7,8 +7,6 @@ import ruamel.yaml as yaml
 
 from copy import deepcopy
 
-from label_formula import LabelFormula
-
 
 logger = logging.getLogger(__name__)
 
@@ -24,8 +22,6 @@ def list_data_files(directory):
         if os.path.isfile(path):
             yield name, path
 
-# TODO выпилить label_formula
-
 
 @attr.s
 class PhraseDescription(object):
@@ -37,10 +33,6 @@ class PhraseDescription(object):
     gov_models = attr.ib(default=attr.Factory(dict))
     punctuation_info = attr.ib(default=attr.Factory(dict))
     grammemes = attr.ib(default=attr.Factory(set))
-    label_formula = attr.ib(default=None)
-
-    def calculate_label_formulae(self):
-        raise NotImplemented
 
     @staticmethod
     def disjunctive_generator(phrase_description):
@@ -56,9 +48,6 @@ class PhraseDescription(object):
 class PhraseDescriptionDisjunctive(PhraseDescription):
     phrases_variants = attr.ib(default=attr.Factory(list))  # list of PhraseDescriptionWithReference
 
-    def calculate_label_formulae(self):
-        self.label_formula = LabelFormula('or', *[phrase.label_formula for phrase in self.phrases_variants])
-
 
 @attr.s
 class PhraseDescriptionComposite(PhraseDescription):
@@ -67,77 +56,21 @@ class PhraseDescriptionComposite(PhraseDescription):
     children_info = attr.ib(default=attr.Factory(dict))  # semantic role -> list of PhraseDescriptionWithReference
     children_formulae = attr.ib(default=attr.Factory(dict))
 
-    def calculate_label_formulae(self):
-        self.root_formulae = []
-
-        for root_phrase_big in self.root_variants:
-            gov_models_info = {}
-            for root_phrase in PhraseDescription.disjunctive_generator(root_phrase_big):
-                for semantic_role in self.children_info.keys():
-                    gov_model = root_phrase.gov_models.get(semantic_role)
-                    if not gov_model:
-                        logger.warning(
-                            'semantic role %s is not defined for phrase %s '
-                            '(mentioned within phrase %s, root variant %s)' % (
-                                semantic_role, root_phrase.name, self.name, root_phrase_big.name
-                            )
-                        )
-                        continue
-
-                    optional, max_cardinality = gov_models_info.get(semantic_role, (False, 0))
-                    gov_models_info[semantic_role] = (
-                        gov_model.optional or optional,
-                        max(max_cardinality, gov_model.max_cardinality)
-                    )
-
-            child_formulae = []
-            for semantic_role, children_variants in self.children_info.items():
-                optional, max_cardinality = gov_models_info.get(semantic_role, (False, 0))
-                if not max_cardinality:
-                    continue
-
-                inner_child_formula = LabelFormula('or', *[phrase.label_formula for phrase in children_variants])
-                children_variants_formulae = []
-
-                if optional:
-                    children_variants_formulae.append(LabelFormula('atomic', set()))
-
-                for i in range(max_cardinality):
-                    children_variants_formulae.append(LabelFormula('and', *([inner_child_formula] * (i + 1))))
-
-                child_formula = LabelFormula('or', *children_variants_formulae)
-                child_formulae.append(child_formula)
-                self.children_formulae[semantic_role] = child_formula
-
-            child_formulae.append(root_phrase_big.label_formula)
-            self.root_formulae.append(LabelFormula('and', *child_formulae))
-
-        self.label_formula = (
-            LabelFormula('or', *self.root_formulae)
-            if self.root_formulae else LabelFormula('atomic', set())
-        )
-
 
 @attr.s
 class PhraseDescriptionLookup(PhraseDescription):
     label = attr.ib(default=attr.Factory(list))
-
-    def calculate_label_formulae(self):
-        self.label_formula = LabelFormula('atomic', {self.lookup[0]})
 
 
 @attr.s
 class PhraseDescriptionLex(PhraseDescription):
     lex_variants = attr.ib(default=attr.Factory(list))
 
-    def calculate_label_formulae(self):
-        self.label_formula = LabelFormula('atomic', set())
-
 
 @attr.s
 class PhraseDescriptionWithReference(object):
     phrase_description = attr.ib()
-    reference = attr.ib(default=None)
+    reference = attr.ib(default=attr.Factory(list))
 
 
 @attr.s(hash=True)
@@ -351,10 +284,6 @@ class PhraseGrammar(object):
 
         logger.info('%s successfully loaded.' % phrase_description.name)
 
-        # TODO циклы в calculate_label_formulae
-        phrase_description.calculate_label_formulae()
-        logger.debug('Label formula is %s' % phrase_description.label_formula)
-
         return phrase_description
 
     def _load_phrases_from_list(self, outer_phrase_name, phrase_list, context=PhraseDescriptionContext()):
@@ -364,7 +293,7 @@ class PhraseGrammar(object):
         result = []
 
         for raw_description in phrase_list:
-            reference = None
+            reference = []
             if isinstance(raw_description, str):
                 phrase_description = self.get_phrase_description(
                     PhraseDescriptionKey(
@@ -389,12 +318,11 @@ class PhraseGrammar(object):
                 reference = raw_description.get('reference')
                 if reference:
                     assert isinstance(reference, str)
+                    reference = [ref.strip() for ref in reference.split('.')]
 
                 self._inline_counter += 1
 
-            # TODO вернуть после рефакторинга
-            result.append(phrase_description)
-            #result.append(PhraseDescriptionWithReference(phrase_description, reference))
+            result.append(PhraseDescriptionWithReference(phrase_description, reference))
 
         return result
 
@@ -487,19 +415,23 @@ class PhraseGrammar(object):
 @attr.s
 class Phrase(object):
     phrase_description = attr.ib()
+    # TODO гарантировать его заполнение
+    onto = attr.ib(default=attr.Factory(set))
     root = attr.ib(default=None)
     children = attr.ib(default=attr.Factory(dict))
+    parent = attr.ib(default=None)
     lex = attr.ib(default=None)
-    morph_an_results = attr.ib(default=None)
-    inflected_form = attr.ib(default=None)
     tag = attr.ib(default=None)
     left_punctuator = attr.ib(default=None)
     right_punctuator = attr.ib(default=None)
     prefix = attr.ib(default=None)
     orientation = attr.ib(default=None)
+
     grammemes = attr.ib(default=attr.Factory(set))
     agree_categories = attr.ib(default=attr.Factory(set))
-    parent = attr.ib(default=None)
+
+    morph_an_results = attr.ib(default=None)
+    inflected_form = attr.ib(default=None)
 
     def _depth(self):
         depth = 0
@@ -547,20 +479,12 @@ class PhraseGenerator(object):
     def get_detected_unknown_words(self):
         return list(self._detected_unknown_words)
 
-    def generate(self, full_phrase_name, context, limit=1):
-        phrase_description = self._grammar.get_phrase_description(PhraseDescriptionKey(full_phrase_name))
-        if not phrase_description:
-            raise LookupError('Phrase %s is not defined' % full_phrase_name)
+    def generate(self, context, limit=1):
+        logger.debug('Generating phrases for context %s' % context)
 
-        logger.debug('Generating phrase %s' % full_phrase_name)
-
-        target_labels = frozenset(context.keys())
         while limit:
-            if phrase_description.label_formula.match(target_labels):
-                phrase = self._choose(phrase_description, context, target_labels)
-                assert phrase
-            else:
-                break
+            # TODO не забыть _preprocess_onto(context)
+            phrase = None
 
             limit -= 1
 
@@ -754,7 +678,28 @@ class PhraseGenerator(object):
         return current_dict
 
     @staticmethod
+    def _preprocess_onto(onto):
+        if isinstance(onto, list):
+            return zip(range(len(onto)), onto)
+
+        if isinstance(onto, dict):
+            return {k: PhraseGenerator._preprocess_onto(v) for k, v in onto.items()}
+
+        return onto
+
+    @staticmethod
     def _onto_match(current_onto, check_onto):
+        # check if current ontology context contains some fragment
+
+        if isinstance(current_onto, list):
+            for _, sub_onto in current_onto:
+                if PhraseGenerator._onto_match(sub_onto, check_onto):
+                    return True
+            return False
+
+        if not isinstance(current_onto, dict):
+            return not check_onto
+
         for k, v in check_onto.items():
             current_v = current_onto.get(k)
             if not current_v:
@@ -763,28 +708,97 @@ class PhraseGenerator(object):
             if not v:
                 continue
 
-            if isinstance(v,dict):
-                if not isinstance(current_v, dict) or not PhraseGenerator._onto_match(current_v,v):
+            if isinstance(v, dict):
+                if not isinstance(current_v, dict) or not PhraseGenerator._onto_match(current_v, v):
                     return False
             elif v != current_v:
                 return False
 
         return True
 
-    def _choose(self, phrase_description, context, target_labels):
-        # TODO переписать с использованием onto и reference (без label_formula)
+    @staticmethod
+    def _clashes(context1, context2):
+        # TODO
+        return False
 
+    @staticmethod
+    def _update_context(source_context, other_context):
+        # TODO
+        return False
+
+    @staticmethod
+    def _process_reference(reference, context):
+        if not reference:
+            return context
+
+        if isinstance(context, dict):
+            if reference[0] not in context:
+                return None
+
+            return PhraseGenerator._process_reference(reference[1:], context[reference[0]])
+        elif isinstance(context, list):
+            valid_sub_contexts = []
+            for uid, sub_context in context:
+                processed_context = PhraseGenerator._process_reference(reference, sub_context)
+                if processed_context is not None:
+                    valid_sub_contexts.append((uid, processed_context))
+
+            return valid_sub_contexts or None
+        else:
+            return None
+
+    @staticmethod
+    def _filter_variants(context, list_of_phrase_descr_with_ref):
+        result = []
+        for phrase_descr_with_ref in list_of_phrase_descr_with_ref:
+            reference = phrase_descr_with_ref.reference
+            phrase_description = phrase_descr_with_ref.phrase_description
+
+            sub_context = PhraseGenerator._process_reference(reference, context)
+            if sub_context is None:
+                continue
+
+            if PhraseGenerator._onto_match(sub_context, phrase_description.onto):
+                result.append((sub_context, phrase_description, reference))
+        return result
+
+    _INTERNAL_RETRIES_COUNT = 10
+
+    def _filter_and_choose(self, list_of_phrase_descr_with_ref, context, already_matched=None):
+        filtered_variants = PhraseGenerator._filter_variants(context, list_of_phrase_descr_with_ref)
+
+        if not filtered_variants:
+            return None, None
+        i = PhraseGenerator._INTERNAL_RETRIES_COUNT
+        while i >= 0:
+            sub_context, phrase_variant, reference = random.choice(filtered_variants)
+            result = self._choose(phrase_variant, sub_context)
+            if result:
+                matched_context = PhraseGenerator.get_matched_context(result, reference)
+                if not PhraseGenerator._clashes(already_matched, matched_context):
+                    return result, matched_context
+            i -= 1
+
+        return None, None
+
+    @staticmethod
+    def get_matched_context(phrase, reference):
+        current = deepcopy(phrase.onto)
+        for ref in reference.reverse():
+            current = {ref: current}
+
+        return current
+
+    def _choose(self, phrase_description, context):
+        already_matched = deepcopy(phrase_description.onto)
         if isinstance(phrase_description, PhraseDescriptionDisjunctive):
-            valid_variants = [
-                v
-                for v in phrase_description.phrases_variants
-                if v.label_formula.match(target_labels)
-            ]
-            assert valid_variants
+            result, variant_matched_context = self._filter_and_choose(
+                phrase_description.phrases_variants, context, already_matched
+            )
+            if not result:
+                return None
 
-            phrase_variant = random.choice(valid_variants)
-            result = self._choose(phrase_variant, context, target_labels)
-            assert result
+            PhraseGenerator._update_context(already_matched, variant_matched_context)
         else:
             result = Phrase(phrase_description, grammemes=set(phrase_description.grammemes))
 
@@ -796,101 +810,56 @@ class PhraseGenerator(object):
                 assert isinstance(phrase_description, PhraseDescriptionComposite)
 
                 if phrase_description.root_variants:
-                    valid_root_variants = []
-                    for root_variant, root_variant_formula in zip(
-                        phrase_description.root_variants, phrase_description.root_formulae
-                    ):
-                        if root_variant_formula.match(target_labels):
-                            valid_root_variants.append(root_variant)
+                    result.root, root_matched_context = self._filter_and_choose(
+                        phrase_description.root_variants, context, already_matched
+                    )
 
-                    assert valid_root_variants
+                    if not result.root:
+                        return None
 
-                    success = False
-                    children_subsets_choosing = None
-                    while not success:
-                        target_labels_copy = set(target_labels)
+                    PhraseGenerator._update_context(already_matched, root_matched_context)
+                    chosen_children = {}
 
-                        root_variant = random.choice(valid_root_variants)
-                        possible_root_label_subsets = root_variant.label_formula.get_possible_subsets(
-                            target_labels_copy
-                        )
+                    children_candidates = list(phrase_description.children_info.items())
+                    random.shuffle(children_candidates)
 
-                        assert possible_root_label_subsets
+                    candidates_left = True
 
-                        root_label_subset = random.choice(possible_root_label_subsets)
-                        result.root = self._choose(root_variant, context, root_label_subset)
-                        assert result.root
+                    while candidates_left:
+                        candidates_left = False
 
-                        result.root.parent = result
-
-                        target_labels_copy.difference_update(root_label_subset)
-
-                        children_subsets_choosing = {}
-
-                        success = True
-                        for semantic_role, children_variants in phrase_description.children_info.items():
+                        for semantic_role, children_variants in children_candidates:
                             gov_model = result.root.phrase_description.gov_models.get(semantic_role)
 
                             if not gov_model:
                                 continue
 
-                            children_formula = phrase_description.children_formulae[semantic_role]
+                            if semantic_role in chosen_children:
+                                children_phrases_and_contexts = chosen_children[semantic_role]
+                            else:
+                                children_phrases_and_contexts = []
+                                chosen_children[semantic_role] = children_phrases_and_contexts
 
-                            possible_children_label_subsets = children_formula.get_possible_subsets(
-                                target_labels_copy
-                            )
-                            if not possible_children_label_subsets:
-                                success = False
-                                break
+                            if len(children_phrases_and_contexts) < gov_model.max_cardinality:
+                                candidates_left = True
 
-                            children_label_subset = random.choice(possible_children_label_subsets)
-                            children_subsets_choosing[semantic_role] = children_label_subset
-                            target_labels_copy.difference_update(children_label_subset)
-
-                        if target_labels_copy:
-                            success = False
-
-                    extended_children_choosing = {}
-                    for semantic_role, children_labels in children_subsets_choosing.items():
-                        gov_model = result.root.phrase_description.gov_models.get(semantic_role)
-                        assert gov_model
-
-                        success = False
-                        while not success:
-                            children_labels_copy = set(children_labels)
-
-                            min_cardinality = 0 if gov_model.optional else 1
-                            child_count = random.choice(range(min_cardinality, gov_model.max_cardinality + 1))
-
-                            child_choosing = []
-                            extended_children_choosing[semantic_role] = child_choosing
-                            success = True
-                            child_variants = phrase_description.children_info[semantic_role]
-                            for j in range(child_count):
-                                child_variant = random.choice(child_variants)
-                                child_formula = child_variant.label_formula
-
-                                possible_child_label_subsets = child_formula.get_possible_subsets(
-                                    children_labels_copy
+                                child_phrase, child_matched_context = self._filter_and_choose(
+                                    children_variants, context, already_matched
                                 )
-                                if not possible_child_label_subsets:
-                                    success = False
-                                    break
 
-                                child_label_subset = random.choice(possible_child_label_subsets)
-                                child_choosing.append((child_variant, child_label_subset))
+                                if not child_phrase and not children_phrases_and_contexts and not gov_model.optional:
+                                    return None
 
-                                children_labels_copy.difference_update(child_label_subset)
+                                if child_phrase:
+                                    PhraseGenerator._update_context(already_matched, child_matched_context)
 
-                            if children_labels_copy:
-                                success = False
+                                children_phrases_and_contexts.append((child_phrase, child_matched_context))
 
-                    for semantic_role, child_choosing in extended_children_choosing.items():
+                    for semantic_role, children_phrases_and_contexts in chosen_children.items():
                         child_phrases = []
-                        for child_variant, child_label_subset in child_choosing:
-                            child_phrase = self._choose(child_variant, context, child_label_subset)
-
-                            assert child_phrase
+                        for child_phrase, child_matched_context in children_phrases_and_contexts:
+                            if not child_phrase:
+                                continue
 
                             gov_model = result.root.phrase_description.gov_models.get(semantic_role)
                             child_phrase.agree_categories = set(gov_model.agree_categories)
@@ -917,4 +886,6 @@ class PhraseGenerator(object):
 
         if not result.tag:
             result.tag = phrase_description.tag
+
+        result.onto = already_matched
         return result

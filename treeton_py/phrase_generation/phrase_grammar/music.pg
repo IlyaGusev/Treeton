@@ -79,12 +79,13 @@ track_keyword:
 track_name:
   onto:
     type: track
+    name: {}
   content:
     root:
       extends: common.bracketed
     tag: track
     inner:
-      lookup: track
+      lookup: name
 
 track_mention:
   - root: track_keyword
@@ -101,12 +102,13 @@ album_keyword:
 album_name:
   onto:
     type: album
+    name: {}
   content:
     root:
       extends: common.bracketed
     tag: album
     inner:
-      lookup: album
+      lookup: name
 
 album_mention:
   - root: album_keyword
@@ -141,12 +143,13 @@ artist_keyword:
 artist_name:
   onto:
     type: artist
+    name: {}
   content:
     root:
       extends: common.bracketed
     tag: artist
     inner:
-      lookup: artist
+      lookup: name
 
 artist_mention:
   - root: artist_keyword
@@ -171,14 +174,13 @@ playlist_keyword:
 playlist_name:
   onto:
     type: playlist
+    name: {}
   content:
     root:
       extends: common.bracketed
     tag: playlist
     inner:
-      lookup: playlist
-
-# TODO поменять lookup: * на lookup: name
+      lookup: name
 
 playlist_mention:
   - root: playlist_keyword
