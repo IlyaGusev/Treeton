@@ -126,6 +126,9 @@ class PhraseGrammar(object):
         for full_name in self._raw_phrase_data.keys():
             self.get_phrase_description(PhraseDescriptionKey(full_name))
 
+    def list_all_phrase_descriptions(self):
+        return [pd for pd in self._phrase_descriptions.values() if not pd.is_inline]
+
     @staticmethod
     def _create_phrase_description(raw_phrase_description, full_name):
         if isinstance(raw_phrase_description, dict):
@@ -415,8 +418,8 @@ class PhraseGrammar(object):
 @attr.s
 class Phrase(object):
     phrase_description = attr.ib()
-    # TODO гарантировать его заполнение
-    onto = attr.ib(default=attr.Factory(set))
+    onto = attr.ib(default=None)
+    reference_set = attr.ib(default=attr.Factory(set))
     root = attr.ib(default=None)
     children = attr.ib(default=attr.Factory(dict))
     parent = attr.ib(default=None)
@@ -479,12 +482,34 @@ class PhraseGenerator(object):
     def get_detected_unknown_words(self):
         return list(self._detected_unknown_words)
 
-    def generate(self, context, limit=1):
-        logger.debug('Generating phrases for context %s' % context)
+    def generate(self, onto_context, limit=1):
+        logger.debug('Generating phrases for onto_context %s' % onto_context)
 
-        while limit:
-            # TODO не забыть _preprocess_onto(context)
-            phrase = None
+        onto_context, _ = self._preprocess_onto(onto_context)
+        logger.debug('Preprocessed onto_context: %s' % onto_context)
+
+        all_possible_references = set()
+        self._collect_possible_references(onto_context, [], all_possible_references)
+        fail_count = 0
+        while limit or fail_count > 20:
+            all_phrase_descriptions = self._grammar.list_all_phrase_descriptions()
+            phrase, matched_onto = self._filter_and_choose(
+                zip([[]]*len(all_phrase_descriptions), all_phrase_descriptions),
+                onto_context
+            )
+
+            if not phrase:
+                fail_count += 1
+                continue
+
+            current_possible_references = set()
+            self._collect_possible_references(matched_onto, [], current_possible_references)
+
+            if all_possible_references != current_possible_references:
+                fail_count += 1
+                continue
+
+            fail_count = 0
 
             limit -= 1
 
@@ -678,53 +703,98 @@ class PhraseGenerator(object):
         return current_dict
 
     @staticmethod
-    def _preprocess_onto(onto):
+    def _preprocess_onto(onto, n_used_ids=0):
         if isinstance(onto, list):
-            return zip(range(len(onto)), onto)
+            res = []
+            for sub_onto in onto:
+                preprocessed_part, n_used_ids = PhraseGenerator._preprocess_onto(sub_onto, n_used_ids)
+                res.append((n_used_ids, preprocessed_part))
+                n_used_ids += 1
+
+            return res, n_used_ids
 
         if isinstance(onto, dict):
-            return {k: PhraseGenerator._preprocess_onto(v) for k, v in onto.items()}
+            new_onto = {}
+            for k, v in onto.items():
+                preprocessed_part, n_used_ids = PhraseGenerator._preprocess_onto(v, n_used_ids)
+                new_onto[k] = preprocessed_part
 
-        return onto
+            onto = new_onto
+
+        return onto, n_used_ids
 
     @staticmethod
     def _onto_match(current_onto, check_onto):
-        # check if current ontology context contains some fragment
+        # find all variants of matching current_onto with check_onto
 
         if isinstance(current_onto, list):
-            for _, sub_onto in current_onto:
-                if PhraseGenerator._onto_match(sub_onto, check_onto):
-                    return True
-            return False
+            matched_onto = []
+            for _id, sub_onto in current_onto:
+                sub_matched_onto = PhraseGenerator._onto_match(sub_onto, check_onto)
+
+                if sub_matched_onto:
+                    matched_onto.append((_id, sub_matched_onto))
+
+            return matched_onto or None
 
         if not isinstance(current_onto, dict):
-            return not check_onto
+            return current_onto if check_onto else None
+
+        matched_onto = {}
 
         for k, v in check_onto.items():
             current_v = current_onto.get(k)
             if not current_v:
-                return False
+                return None
 
             if not v:
+                matched_onto[k] = current_v
                 continue
 
             if isinstance(v, dict):
-                if not isinstance(current_v, dict) or not PhraseGenerator._onto_match(current_v, v):
-                    return False
-            elif v != current_v:
-                return False
+                if not isinstance(current_v, dict):
+                    return None
 
-        return True
+                match_variants = PhraseGenerator._onto_match(current_v, v)
+
+                if not match_variants:
+                    return None
+
+                matched_onto[k] = match_variants
+            elif v == current_v:
+                matched_onto[k] = current_v
+            else:
+                return None
+
+        return matched_onto
 
     @staticmethod
-    def _clashes(context1, context2):
-        # TODO
-        return False
+    def _update_onto(current_onto, new_onto):
+        if not current_onto:
+            return deepcopy(new_onto)
 
-    @staticmethod
-    def _update_context(source_context, other_context):
-        # TODO
-        return False
+        assert type(current_onto) == type(new_onto)
+
+        if isinstance(new_onto, dict):
+            for k, sub_onto in new_onto.items():
+                if k in current_onto:
+                    PhraseGenerator._update_onto(current_onto[k], sub_onto)
+                else:
+                    current_onto[k] = deepcopy(sub_onto)
+        elif isinstance(new_onto, list):
+            for new_id, new_sub_onto in new_onto:
+                found = False
+                for _id, sub_onto in current_onto:
+                    if _id == new_id:
+                        PhraseGenerator._update_onto(sub_onto, new_sub_onto)
+                        found = True
+                        break
+                if not found:
+                    new_onto.append((new_id, deepcopy(new_sub_onto)))
+        else:
+            assert current_onto == new_onto
+
+        return current_onto
 
     @staticmethod
     def _process_reference(reference, context):
@@ -748,76 +818,161 @@ class PhraseGenerator(object):
             return None
 
     @staticmethod
-    def _filter_variants(context, list_of_phrase_descr_with_ref):
+    def _process_reference(reference, context):
+        if not reference:
+            return context
+
+        if isinstance(context, dict):
+            if reference[0] not in context:
+                return None
+
+            return PhraseGenerator._process_reference(reference[1:], context[reference[0]])
+        elif isinstance(context, list):
+            valid_sub_contexts = []
+            for uid, sub_context in context:
+                processed_context = PhraseGenerator._process_reference(reference, sub_context)
+                if processed_context is not None:
+                    valid_sub_contexts.append((uid, processed_context))
+
+            return valid_sub_contexts or None
+        else:
+            return None
+
+    @staticmethod
+    def _process_reference(reference, onto):
+        if not reference:
+            return onto
+
+        if isinstance(onto, dict):
+            if reference[0] not in onto:
+                return None
+
+            return PhraseGenerator._process_reference(reference[1:], onto[reference[0]])
+        elif isinstance(onto, list):
+            valid_sub_contexts = []
+            for uid, sub_context in onto:
+                processed_context = PhraseGenerator._process_reference(reference, sub_context)
+                if processed_context is not None:
+                    valid_sub_contexts.append((uid, processed_context))
+
+            return valid_sub_contexts or None
+        else:
+            return None
+
+    @staticmethod
+    def _collect_possible_references(onto, current_reference, target_reference_set):
+        if isinstance(onto, dict):
+            for k, sub_onto in onto.items():
+                new_reference = current_reference + [k]
+                target_reference_set.add(tuple(new_reference))
+                PhraseGenerator._collect_possible_references(sub_onto, new_reference, target_reference_set)
+        elif isinstance(onto, list):
+            for _id, sub_onto in onto:
+                PhraseGenerator._collect_possible_references(sub_onto, current_reference + [_id], target_reference_set)
+
+    @staticmethod
+    def _filter_variants(onto, list_of_phrase_descr_with_ref):
         result = []
         for phrase_descr_with_ref in list_of_phrase_descr_with_ref:
             reference = phrase_descr_with_ref.reference
             phrase_description = phrase_descr_with_ref.phrase_description
 
-            sub_context = PhraseGenerator._process_reference(reference, context)
+            sub_context = PhraseGenerator._process_reference(reference, onto)
             if sub_context is None:
                 continue
 
-            if PhraseGenerator._onto_match(sub_context, phrase_description.onto):
-                result.append((sub_context, phrase_description, reference))
+            # noinspection PyTypeChecker
+            matched_onto = PhraseGenerator._onto_match(sub_context, phrase_description.onto)
+            if matched_onto:
+                result.append((matched_onto, phrase_description, reference))
         return result
 
     _INTERNAL_RETRIES_COUNT = 10
 
-    def _filter_and_choose(self, list_of_phrase_descr_with_ref, context, already_matched=None):
-        filtered_variants = PhraseGenerator._filter_variants(context, list_of_phrase_descr_with_ref)
+    def _filter_and_choose(self, list_of_phrase_descr_with_ref, onto, already_referenced=set()):
+        filtered_variants = PhraseGenerator._filter_variants(onto, list_of_phrase_descr_with_ref)
 
         if not filtered_variants:
-            return None, None
+            return None, None, None
         i = PhraseGenerator._INTERNAL_RETRIES_COUNT
         while i >= 0:
-            sub_context, phrase_variant, reference = random.choice(filtered_variants)
-            result = self._choose(phrase_variant, sub_context)
+            matched_onto, phrase_variant, reference = random.choice(filtered_variants)
+            result = self._choose(phrase_variant, matched_onto)
             if result:
-                matched_context = PhraseGenerator.get_matched_context(result, reference)
-                if not PhraseGenerator._clashes(already_matched, matched_context):
-                    return result, matched_context
+                new_reference_set = set()
+                matched_onto = PhraseGenerator._rewind_reference(
+                    result.onto, reference, [], new_reference_set, result.reference_set
+                )
+                if new_reference_set.isdisjoint(already_referenced):
+                    return result, matched_onto, new_reference_set
             i -= 1
 
-        return None, None
+        return None, None, None
 
     @staticmethod
-    def get_matched_context(phrase, reference):
-        current = deepcopy(phrase.onto)
-        for ref in reference.reverse():
-            current = {ref: current}
+    def _rewind_reference(onto, reference, current_path, target_reference_set, reference_filter):
+        if not reference:
+            possible_references = set()
+            PhraseGenerator._collect_possible_references(onto, [], possible_references)
+            possible_references = possible_references.intersection(reference_filter)
 
-        return current
+            for reference in possible_references:
+                target_reference_set.add(tuple(current_path + list(reference)))
 
-    def _choose(self, phrase_description, context):
-        already_matched = deepcopy(phrase_description.onto)
+            return onto
+
+        ref = reference[0]
+
+        if isinstance(onto, list):
+            return {
+                ref: [
+                    (
+                        _id,
+                        PhraseGenerator._rewind_reference(
+                            sub_onto, reference[1:], current_path + [_id], target_reference_set, reference_filter
+                        )
+                    )
+                    for (_id, sub_onto) in onto
+                ]
+            }
+
+        return {
+            ref:
+            PhraseGenerator._rewind_reference(
+                onto, reference[1:], current_path + [ref], target_reference_set, reference_filter
+            )
+        }
+
+    def _choose(self, phrase_description, onto):
         if isinstance(phrase_description, PhraseDescriptionDisjunctive):
-            result, variant_matched_context = self._filter_and_choose(
-                phrase_description.phrases_variants, context, already_matched
+            result, matched_onto, reference_set = self._filter_and_choose(
+                phrase_description.phrases_variants, onto
             )
             if not result:
                 return None
-
-            PhraseGenerator._update_context(already_matched, variant_matched_context)
+            result.onto = matched_onto
+            result.reference_set = reference_set
         else:
             result = Phrase(phrase_description, grammemes=set(phrase_description.grammemes))
 
             if isinstance(phrase_description, PhraseDescriptionLex):
                 result.lex = random.choice(phrase_description.lex_variants)
             elif isinstance(phrase_description, PhraseDescriptionLookup):
-                result.lex = self._lookup(context, phrase_description.lookup)
+                result.lex = self._lookup(onto, phrase_description.lookup)
             else:
                 assert isinstance(phrase_description, PhraseDescriptionComposite)
 
                 if phrase_description.root_variants:
-                    result.root, root_matched_context = self._filter_and_choose(
-                        phrase_description.root_variants, context, already_matched
+                    result.root, root_matched_onto, root_reference_set = self._filter_and_choose(
+                        phrase_description.root_variants, onto
                     )
 
                     if not result.root:
                         return None
 
-                    PhraseGenerator._update_context(already_matched, root_matched_context)
+                    result.reference_set = root_reference_set
+                    result.onto = self._update_onto(result.onto, root_matched_onto)
+
                     chosen_children = {}
 
                     children_candidates = list(phrase_description.children_info.items())
@@ -835,29 +990,29 @@ class PhraseGenerator(object):
                                 continue
 
                             if semantic_role in chosen_children:
-                                children_phrases_and_contexts = chosen_children[semantic_role]
+                                children_phrases = chosen_children[semantic_role]
                             else:
-                                children_phrases_and_contexts = []
-                                chosen_children[semantic_role] = children_phrases_and_contexts
+                                children_phrases = []
+                                chosen_children[semantic_role] = children_phrases
 
-                            if len(children_phrases_and_contexts) < gov_model.max_cardinality:
+                            if len(children_phrases) < gov_model.max_cardinality:
                                 candidates_left = True
 
-                                child_phrase, child_matched_context = self._filter_and_choose(
-                                    children_variants, context, already_matched
+                                child_phrase, child_matched_onto, child_reference_set = self._filter_and_choose(
+                                    children_variants, onto
                                 )
 
-                                if not child_phrase and not children_phrases_and_contexts and not gov_model.optional:
+                                if not child_phrase and not children_phrases and not gov_model.optional:
                                     return None
 
                                 if child_phrase:
-                                    PhraseGenerator._update_context(already_matched, child_matched_context)
+                                    result.onto = self._update_onto(result.onto, child_matched_onto)
+                                    result.reference_set.update(child_reference_set)
+                                    children_phrases.append(child_phrase)
 
-                                children_phrases_and_contexts.append((child_phrase, child_matched_context))
-
-                    for semantic_role, children_phrases_and_contexts in chosen_children.items():
+                    for semantic_role, children_phrases in chosen_children.items():
                         child_phrases = []
-                        for child_phrase, child_matched_context in children_phrases_and_contexts:
+                        for child_phrase in children_phrases:
                             if not child_phrase:
                                 continue
 
@@ -887,5 +1042,4 @@ class PhraseGenerator(object):
         if not result.tag:
             result.tag = phrase_description.tag
 
-        result.onto = already_matched
         return result

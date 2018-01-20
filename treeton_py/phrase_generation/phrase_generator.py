@@ -184,7 +184,7 @@ class Generator:
                 try:
                     prepared_form = prepare_form(source_form, config_path, sampling_memory)
 
-                    phrases_iterator = phrase_generator.generate(phrase_id, context=prepared_form)
+                    phrases_iterator = phrase_generator.generate(onto_context=prepared_form)
                     structured_phrase = next(phrases_iterator)
                     if not structured_phrase:
                         continue
