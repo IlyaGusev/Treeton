@@ -13,18 +13,20 @@ from morph.paradigms_parser import ParadigmsParser
 
 logger = logging.getLogger(__name__)
 
-SAMPLE_FROM_LIST = 'sample_from_list'
-SAMPLE_FROM_FILE = 'sample_from_file'
-SAMPLE_FROM_JSON_LIST = 'sample_from_json_list'
-SAMPLE_FROM_DATETIME_RAW = 'sample_from_datetime_raw'
+SAMPLE_FROM_LIST = '_sample_from_list'
+SAMPLE_FROM_FILE = '_sample_from_file'
+SAMPLE_FROM_JSON_LIST = '_sample_from_json_list'
+SAMPLE_FROM_DATETIME_RAW = '_sample_from_datetime_raw'
+OPTIONAL = '_optional'
 
 
-POSSIBLE_TASKS = [
+POSSIBLE_TASKS = {
     SAMPLE_FROM_LIST,
     SAMPLE_FROM_FILE,
     SAMPLE_FROM_JSON_LIST,
-    SAMPLE_FROM_DATETIME_RAW
-]
+    SAMPLE_FROM_DATETIME_RAW,
+    OPTIONAL
+}
 
 
 def random_datetime_raw(only_date):
@@ -99,7 +101,7 @@ class SamplingMemory:
 
 def sample_from_file(params, config_path, sampling_memory):
     big_list = []
-    for p in params['path']:
+    for p in params[SAMPLE_FROM_FILE]:
         path = os.path.join(os.path.dirname(config_path), p)
 
         if path not in sampling_memory.parsed_text_lists:
@@ -117,7 +119,7 @@ def sample_from_file(params, config_path, sampling_memory):
 
 def sample_from_json(params, config_path, sampling_memory):
     big_list = []
-    for p in params['path']:
+    for p in params[SAMPLE_FROM_JSON_LIST]:
         path = os.path.join(os.path.dirname(config_path), p)
 
         if path not in sampling_memory.parsed_json_lists:
@@ -134,25 +136,43 @@ def sample_from_json(params, config_path, sampling_memory):
     return random.choice(big_list)
 
 
-def choose_value(task, params, config_path, sampling_memory):
-    if task == SAMPLE_FROM_LIST:
-        return random.choice(params)
-    elif task == SAMPLE_FROM_FILE:
+def choose_value(params, config_path, sampling_memory):
+    if OPTIONAL in params:
+        return random.choice([prepare_form(params['_body'], config_path, sampling_memory), None])
+
+    if SAMPLE_FROM_LIST in 'params':
+        return random.choice(params[SAMPLE_FROM_LIST])
+    elif SAMPLE_FROM_FILE in 'params':
         return sample_from_file(params, config_path, sampling_memory)
-    elif task == SAMPLE_FROM_JSON_LIST:
+    elif SAMPLE_FROM_JSON_LIST in 'params':
         return sample_from_json(params, config_path, sampling_memory)
-    elif task == SAMPLE_FROM_DATETIME_RAW:
-        r = random_datetime_raw(params.get('only_date', False))
+    elif SAMPLE_FROM_DATETIME_RAW in 'params':
+        r = random_datetime_raw(params.get('_only_date', False))
         return r
 
 
 def prepare_form(form, config_path, sampling_memory):
-    result = {}
-    for k, v in form.items():
-        if isinstance(v, list) and v and v[0] in POSSIBLE_TASKS:
-            v = choose_value(v[0], v[1], config_path, sampling_memory)
-        if v:
-            result[k] = v
+    if isinstance(form, dict):
+        keys = set(form.keys())
+        keys = keys.intersection(POSSIBLE_TASKS)
+
+        if keys:
+            result = choose_value(form, config_path, sampling_memory)
+        else:
+            result = {}
+            for k, v in form.items():
+                prepared = prepare_form(v, config_path, sampling_memory)
+                if prepared:
+                    result[k] = prepared
+    elif isinstance(form, list):
+        result = []
+        for v in form:
+            prepared = prepare_form(v, config_path, sampling_memory)
+            if prepared:
+                result.append(prepared)
+    else:
+        result = form
+
     return result
 
 
@@ -172,19 +192,20 @@ class Generator:
         def context_generator():
             for form in config['form']:
                 for _ in range(config['number_of_iterations']):
-                    for pid in config['phrase_ids']:
-                        yield (form, pid)
+                    yield (form, config.get('phrase_ids'))
 
         unique_phrases = set()
         sampling_memory = SamplingMemory()
 
         n_tries = 0
-        for source_form, phrase_id in context_generator():
+        for source_form, phrase_ids in context_generator():
             while True:
                 try:
                     prepared_form = prepare_form(source_form, config_path, sampling_memory)
 
-                    phrases_iterator = phrase_generator.generate(onto_context=prepared_form)
+                    phrases_iterator = phrase_generator.generate(
+                        onto_context=prepared_form, phrase_full_names=phrase_ids
+                    )
                     structured_phrase = next(phrases_iterator)
                     if not structured_phrase:
                         continue

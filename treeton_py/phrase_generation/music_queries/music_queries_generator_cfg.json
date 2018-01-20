@@ -1,37 +1,52 @@
 {
-  "phrase_ids": [
-    "music.turn_music_on"
-  ],
   "number_of_iterations": 100,
   "form": [
     {
-      "artist": [
-        "sample_from_list",
-        [
-          "Beatles",
-          "Аквариум",
-          "Queen",
-          null
+      "type": "switch_on",
+      "target" : {
+        "type": "music_entity",
+        "component": [
+          {
+            "_optional": true,
+            "_body": {
+              "type": "artist",
+              "name": {
+                "_sample_from_list": [
+                  "Beatles",
+                  "Аквариум",
+                  "Queen"
+                ]
+              }
+            }
+          },
+          {
+            "_optional": true,
+            "_body": {
+              "type": "album",
+              "name": {
+                "_sample_from_list": [
+                  "Help",
+                  "Праздник урожая во дворце труда",
+                  "A night at the opera"
+                ]
+              }
+            }
+          },
+          {
+            "_optional": true,
+            "_body": {
+              "type": "track",
+              "name": {
+                "_sample_from_list": [
+                  "Yesterday",
+                  "Город",
+                  "We will rock you"
+                ]
+              }
+            }
+          }
         ]
-      ],
-      "album": [
-        "sample_from_list",
-        [
-          "Help",
-          "Праздник урожая во дворце труда",
-          "A night at the opera",
-          null
-        ]
-      ],
-      "track": [
-        "sample_from_list",
-        [
-          "Yesterday",
-          "Город",
-          "We will rock you",
-          null
-        ]
-      ]
+      }
     }
   ]
 }

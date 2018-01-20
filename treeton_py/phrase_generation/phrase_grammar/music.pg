@@ -217,16 +217,22 @@ turn_music_on:
   content:
     - root: common.infinitive_clause
       infinitive:
-        root: all_music_verbs
-        object:
-          reference: target
-          content: all_music
+        onto:
+          target: {}
+        content:
+          root: all_music_verbs
+          object:
+            reference: target
+            content: all_music
     - root: common.imperative_clause
       imperative:
-        root: all_launch_verbs
-        object:
-          reference: target
-          content: all_music
+        onto:
+          target: {}
+        content:
+          root: all_launch_verbs
+          object:
+            reference: target
+            content: all_music
     - root: common.abstract_clause
       aux:
         - all_music_verbs

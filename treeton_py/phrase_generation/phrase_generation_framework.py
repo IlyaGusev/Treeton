@@ -306,6 +306,11 @@ class PhraseGrammar(object):
                 )
             else:
                 assert isinstance(raw_description, dict), 'raw_description is not a dict, phrase %s' % outer_phrase_name
+                reference = raw_description.get('reference')
+                if reference:
+                    assert isinstance(reference, str)
+                    reference = [ref.strip() for ref in reference.split('.')]
+
                 # reading inline phrase_description
                 phrase_description = self._create_phrase_description(
                     raw_description,
@@ -318,10 +323,6 @@ class PhraseGrammar(object):
                 )
 
                 phrase_description.is_inline = True
-                reference = raw_description.get('reference')
-                if reference:
-                    assert isinstance(reference, str)
-                    reference = [ref.strip() for ref in reference.split('.')]
 
                 self._inline_counter += 1
 
@@ -333,7 +334,9 @@ class PhraseGrammar(object):
         root_variants = data.get('root')
 
         if root_variants:
-            phrase_description.root_variants = self._load_phrases_from_list(phrase_description.name, root_variants)
+            phrase_description.root_variants = self._load_phrases_from_list(
+                phrase_description.name, root_variants
+            )
 
             if not phrase_description.root_variants:
                 raise ValueError('root section for phrase %s is empty' % phrase_description.name)
@@ -482,7 +485,7 @@ class PhraseGenerator(object):
     def get_detected_unknown_words(self):
         return list(self._detected_unknown_words)
 
-    def generate(self, onto_context, limit=1):
+    def generate(self, onto_context, phrase_full_names=None, limit=1):
         logger.debug('Generating phrases for onto_context %s' % onto_context)
 
         onto_context, _ = self._preprocess_onto(onto_context)
@@ -492,10 +495,14 @@ class PhraseGenerator(object):
         self._collect_possible_references(onto_context, [], all_possible_references)
         fail_count = 0
         while limit or fail_count > 20:
-            all_phrase_descriptions = self._grammar.list_all_phrase_descriptions()
-            phrase, matched_onto = self._filter_and_choose(
-                zip([[]]*len(all_phrase_descriptions), all_phrase_descriptions),
-                onto_context
+            all_phrase_descriptions = [
+                PhraseDescriptionWithReference(ph, [])
+                for ph in self._grammar.list_all_phrase_descriptions()
+                if ph.onto and (not phrase_full_names or ph.name in phrase_full_names)
+            ]
+
+            phrase, matched_onto, reference_set = self._filter_and_choose(
+               all_phrase_descriptions, onto_context
             )
 
             if not phrase:
@@ -725,43 +732,47 @@ class PhraseGenerator(object):
 
     @staticmethod
     def _onto_match(current_onto, check_onto):
+        if not check_onto:
+            return current_onto
+
+        assert isinstance(check_onto, dict)
         # find all variants of matching current_onto with check_onto
 
         if isinstance(current_onto, list):
             matched_onto = []
             for _id, sub_onto in current_onto:
+                if not isinstance(sub_onto, (list, dict)):
+                    continue
+
                 sub_matched_onto = PhraseGenerator._onto_match(sub_onto, check_onto)
 
-                if sub_matched_onto:
+                if sub_matched_onto is not None:
                     matched_onto.append((_id, sub_matched_onto))
 
             return matched_onto or None
 
-        if not isinstance(current_onto, dict):
-            return current_onto if check_onto else None
-
         matched_onto = {}
 
-        for k, v in check_onto.items():
+        for k, check_v in check_onto.items():
             current_v = current_onto.get(k)
             if not current_v:
                 return None
 
-            if not v:
+            if not check_v:
                 matched_onto[k] = current_v
                 continue
 
-            if isinstance(v, dict):
+            if isinstance(check_v, dict):
                 if not isinstance(current_v, dict):
                     return None
 
-                match_variants = PhraseGenerator._onto_match(current_v, v)
+                sub_matched_onto = PhraseGenerator._onto_match(current_v, check_v)
 
-                if not match_variants:
+                if sub_matched_onto is None:
                     return None
 
-                matched_onto[k] = match_variants
-            elif v == current_v:
+                matched_onto[k] = sub_matched_onto
+            elif check_v == current_v:
                 matched_onto[k] = current_v
             else:
                 return None
@@ -877,13 +888,13 @@ class PhraseGenerator(object):
             reference = phrase_descr_with_ref.reference
             phrase_description = phrase_descr_with_ref.phrase_description
 
-            sub_context = PhraseGenerator._process_reference(reference, onto)
-            if sub_context is None:
+            sub_onto = PhraseGenerator._process_reference(reference, onto)
+            if sub_onto is None or not isinstance(sub_onto, (list, dict)):
                 continue
 
             # noinspection PyTypeChecker
-            matched_onto = PhraseGenerator._onto_match(sub_context, phrase_description.onto)
-            if matched_onto:
+            matched_onto = PhraseGenerator._onto_match(sub_onto, phrase_description.onto)
+            if matched_onto is not None:
                 result.append((matched_onto, phrase_description, reference))
         return result
 
