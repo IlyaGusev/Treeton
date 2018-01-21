@@ -140,13 +140,13 @@ def choose_value(params, config_path, sampling_memory):
     if OPTIONAL in params:
         return random.choice([prepare_form(params['_body'], config_path, sampling_memory), None])
 
-    if SAMPLE_FROM_LIST in 'params':
+    if SAMPLE_FROM_LIST in params:
         return random.choice(params[SAMPLE_FROM_LIST])
-    elif SAMPLE_FROM_FILE in 'params':
+    elif SAMPLE_FROM_FILE in params:
         return sample_from_file(params, config_path, sampling_memory)
-    elif SAMPLE_FROM_JSON_LIST in 'params':
+    elif SAMPLE_FROM_JSON_LIST in params:
         return sample_from_json(params, config_path, sampling_memory)
-    elif SAMPLE_FROM_DATETIME_RAW in 'params':
+    elif SAMPLE_FROM_DATETIME_RAW in params:
         r = random_datetime_raw(params.get('_only_date', False))
         return r
 
@@ -198,16 +198,26 @@ class Generator:
         sampling_memory = SamplingMemory()
 
         n_tries = 0
+        failed_forms = set()
         for source_form, phrase_ids in context_generator():
             while True:
                 try:
                     prepared_form = prepare_form(source_form, config_path, sampling_memory)
+                    form_string = json.dumps(prepared_form, sort_keys=True, indent=2, ensure_ascii=False)
+
+                    if form_string in failed_forms:
+                        if n_tries > 100:
+                            break
+                        n_tries += 1
+                        continue
 
                     phrases_iterator = phrase_generator.generate(
                         onto_context=prepared_form, phrase_full_names=phrase_ids
                     )
                     structured_phrase = next(phrases_iterator)
                     if not structured_phrase:
+                        logger.warning('Failed to generate phrase for form:\n%s' % form_string)
+                        failed_forms.add(form_string)
                         continue
 
                     phrase = phrase_generator.render_string(structured_phrase)
@@ -224,6 +234,7 @@ class Generator:
                     break
                 except Exception as e:
                     print('skipping form due to error: %s' % e)
+                    logger.exception(e)
 
         detected_unknowns = phrase_generator.get_detected_unknown_words()
         if detected_unknowns:
@@ -242,10 +253,11 @@ class Generator:
                 f_out.write('\n')
 
         logger.info('%d phrases were stored to %s' % (len(shortest_toplist), out_path))
-        logger.info('10 random phrases:\n\t%s' % (
-                '\n\t'.join([phrase for (_, phrase) in random.choices(shortest_toplist, k=10)])
+        if shortest_toplist:
+            logger.info('10 random phrases:\n\t%s' % (
+                    '\n\t'.join([phrase for (_, phrase) in random.choices(shortest_toplist, k=10)])
+                )
             )
-        )
 
         if top_path:
             shortest_toplist = shortest_toplist[0:shortest_top_size]

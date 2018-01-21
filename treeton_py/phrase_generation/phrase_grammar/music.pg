@@ -53,6 +53,8 @@ all_music_verbs:
 # music objects
 
 abstract_music:
+  onto:
+    type: music_entity
   extends: common.abstract_object
   lex:
     - музыка
