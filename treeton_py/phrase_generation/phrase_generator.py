@@ -240,6 +240,12 @@ class Generator:
         if detected_unknowns:
             logger.warning('Unknown words were detected during generation: %s' % detected_unknowns)
 
+        logger.debug(
+            'Phrase usage statistics:\n\t%s' % (
+                '\n\t'.join(['%s: %d' % (name, stat) for name, stat in phrase_generator.get_phrase_usage_statistics()])
+            )
+        )
+
         shortest_toplist.sort(key=lambda t: len(t[1]))
 
         with codecs.open(out_path, 'w', encoding='utf-8') as f_out:

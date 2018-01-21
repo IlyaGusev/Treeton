@@ -6,6 +6,7 @@ import random
 import ruamel.yaml as yaml
 
 from copy import deepcopy
+from itertools import chain
 
 
 logger = logging.getLogger(__name__)
@@ -104,8 +105,8 @@ class PhraseDescriptionContext(object):
 class PhraseGrammar(object):
     def __init__(self, grammar_path):
         self._phrase_descriptions = {}
+        self._inline_phrase_descriptions = []
         self._raw_phrase_data = None
-        self._inline_counter = 0
         self._load(grammar_path)
 
     def is_loaded(self):
@@ -126,8 +127,11 @@ class PhraseGrammar(object):
         for full_name in self._raw_phrase_data.keys():
             self.get_phrase_description(PhraseDescriptionKey(full_name))
 
-    def list_all_phrase_descriptions(self):
-        return [pd for pd in self._phrase_descriptions.values() if not pd.is_inline]
+    def get_outer_phrase_descriptions(self):
+        return tuple(self._phrase_descriptions.values())
+
+    def get_inline_phrase_descriptions(self):
+        return tuple(self._inline_phrase_descriptions)
 
     @staticmethod
     def _create_phrase_description(raw_phrase_description, full_name):
@@ -284,7 +288,7 @@ class PhraseGrammar(object):
                     )
 
                 phrase_description.phrases_variants = self._load_phrases_from_list(
-                    phrase_description.name, content_variants, context
+                    phrase_description.name, [], content_variants, context
                 )
             else:
                 self._load_composite_phrase(phrase_description, data)
@@ -292,18 +296,23 @@ class PhraseGrammar(object):
             assert data
             if context:
                 phrase_description.onto = self._system_of_tuples_to_dict(context.onto)
-            phrase_description.phrases_variants = self._load_phrases_from_list(phrase_description.name, data, context)
+            phrase_description.phrases_variants = self._load_phrases_from_list(
+                phrase_description.name, [], data, context
+            )
 
         logger.info('%s successfully loaded.' % phrase_description.name)
 
         return phrase_description
 
-    def _load_phrases_from_list(self, outer_phrase_name, phrase_list, context=PhraseDescriptionContext()):
+    def _load_phrases_from_list(
+        self, outer_phrase_name, inline_suffix, phrase_list, context=PhraseDescriptionContext()
+    ):
         if not isinstance(phrase_list, list):
             phrase_list = [phrase_list]
 
         result = []
 
+        counter = 0
         for raw_description in phrase_list:
             reference = []
             if isinstance(raw_description, str):
@@ -319,7 +328,7 @@ class PhraseGrammar(object):
                 # reading inline phrase_description
                 phrase_description = self._create_phrase_description(
                     raw_description,
-                    '%s.inline_%d' % (outer_phrase_name, self._inline_counter)
+                    '%s.%s' % (outer_phrase_name, '.'.join(inline_suffix + [str(counter)]))
                 )
 
                 reference = raw_description.get('reference')
@@ -334,11 +343,10 @@ class PhraseGrammar(object):
                     raw_description,
                     context
                 )
-
                 phrase_description.is_inline = True
+                self._inline_phrase_descriptions.append(phrase_description)
 
-                self._inline_counter += 1
-
+            counter += 1
             result.append(PhraseDescriptionWithReference(phrase_description, reference))
 
         return result
@@ -348,7 +356,7 @@ class PhraseGrammar(object):
 
         if root_variants:
             phrase_description.root_variants = self._load_phrases_from_list(
-                phrase_description.name, root_variants
+                phrase_description.name, ['root'], root_variants
             )
 
             if not phrase_description.root_variants:
@@ -361,7 +369,7 @@ class PhraseGrammar(object):
                 continue
 
             phrase_description.children_info[semantic_role] = self._load_phrases_from_list(
-                phrase_description.name, raw_children_variants
+                phrase_description.name, [semantic_role], raw_children_variants
             )
 
     def _load_gov_models(self, phrase_description, raw_gov_models):
@@ -437,6 +445,7 @@ class PhraseGrammar(object):
 @attr.s
 class Phrase(object):
     phrase_description = attr.ib()
+    intermediate_phrase_descriptions = attr.ib(default=attr.Factory(list))
     onto = attr.ib(default=None)
     reference_set = attr.ib(default=attr.Factory(set))
     root = attr.ib(default=None)
@@ -500,9 +509,19 @@ class PhraseGenerator(object):
         self._morph_engine = morph_engine
         self._detected_unknown_words = set()
         self._choosing_memory = {}
+        self._phrase_usage_stats = {
+            ph.name: 0
+            for ph in chain(
+                self._grammar.get_outer_phrase_descriptions(),
+                self._grammar.get_inline_phrase_descriptions()
+            )
+        }
 
     def get_detected_unknown_words(self):
         return list(self._detected_unknown_words)
+
+    def get_phrase_usage_statistics(self):
+        return sorted(self._phrase_usage_stats.items(), key=lambda x: (-x[1], x[0]))
 
     def generate(self, onto_context, phrase_full_names=None, limit=1):
         logger.debug('Generating phrases for onto_context %s' % onto_context)
@@ -515,7 +534,7 @@ class PhraseGenerator(object):
         while limit and fail_count < 20:
             all_phrase_descriptions = [
                 PhraseDescriptionWithReference(ph, [])
-                for ph in self._grammar.list_all_phrase_descriptions()
+                for ph in self._grammar.get_outer_phrase_descriptions()
                 if ph.onto and (not phrase_full_names or ph.name in phrase_full_names)
             ]
 
@@ -538,10 +557,42 @@ class PhraseGenerator(object):
 
             limit -= 1
 
+            self._update_usage_stats(phrase)
+
             self._inflect(phrase)
             yield phrase
 
         yield None
+
+    @staticmethod
+    def _collect_used_names(phrase, target_set):
+        used_phrase_descrs = [phrase.phrase_description] + phrase.intermediate_phrase_descriptions
+        for phrase_description in used_phrase_descrs:
+            target_set.add(phrase_description.name)
+            for predecessor_name in phrase_description.predecessors:
+                target_set.add(predecessor_name)
+
+        if phrase.root:
+            PhraseGenerator._collect_used_names(phrase.root, target_set)
+        for _, child_phrases in phrase.children.items():
+            for child in child_phrases:
+                PhraseGenerator._collect_used_names(child, target_set)
+
+    def _update_usage_stats(self, phrase):
+        all_names = set()
+        PhraseGenerator._collect_used_names(phrase, all_names)
+
+        all_all_names = set()
+
+        for name in all_names:
+            splitted_name = name.split('.')
+            prefixes = ['.'.join(splitted_name[:length+1]) for length in range(len(splitted_name))]
+            for prefix in prefixes:
+                if prefix in self._phrase_usage_stats:
+                    all_all_names.add(prefix)
+
+        for name in all_all_names:
+            self._phrase_usage_stats[name] += 1
 
     def _update_grammemes(self, phrase, new_grammemes):
         if phrase.grammemes is None:
@@ -1034,6 +1085,7 @@ class PhraseGenerator(object):
             )
             if not result:
                 return None
+            result.intermediate_phrase_descriptions.append(phrase_description)
             result.onto = matched_onto
             result.reference_set = reference_set
         else:
