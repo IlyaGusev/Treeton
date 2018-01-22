@@ -112,6 +112,14 @@ class PhraseGrammar(object):
     def is_loaded(self):
         return self._raw_phrase_data is not None
 
+    def collect_all_phrase_names(self, phrase_description, target_set):
+        target_set.add(phrase_description.name)
+
+        for predecessor_name in phrase_description.predecessors:
+            self.collect_all_phrase_names(
+                self._phrase_descriptions[PhraseDescriptionKey(predecessor_name)], target_set
+            )
+
     def _load(self, grammar_path):
         self._raw_phrase_data = {}
 
@@ -564,23 +572,20 @@ class PhraseGenerator(object):
 
         yield None
 
-    @staticmethod
-    def _collect_used_names(phrase, target_set):
+    def _collect_used_names(self, phrase, target_set):
         used_phrase_descrs = [phrase.phrase_description] + phrase.intermediate_phrase_descriptions
         for phrase_description in used_phrase_descrs:
-            target_set.add(phrase_description.name)
-            for predecessor_name in phrase_description.predecessors:
-                target_set.add(predecessor_name)
+            self._grammar.collect_all_phrase_names(phrase_description, target_set)
 
         if phrase.root:
-            PhraseGenerator._collect_used_names(phrase.root, target_set)
+            self._collect_used_names(phrase.root, target_set)
         for _, child_phrases in phrase.children.items():
             for child in child_phrases:
-                PhraseGenerator._collect_used_names(child, target_set)
+                self._collect_used_names(child, target_set)
 
     def _update_usage_stats(self, phrase):
         all_names = set()
-        PhraseGenerator._collect_used_names(phrase, all_names)
+        self._collect_used_names(phrase, all_names)
 
         all_all_names = set()
 
