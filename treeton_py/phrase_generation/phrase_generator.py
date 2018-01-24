@@ -242,7 +242,7 @@ class Generator:
 
         logger.debug(
             'Phrase usage statistics:\n\t%s' % (
-                '\n\t'.join(['%s: %d' % (name, stat) for name, stat in phrase_generator.get_phrase_usage_statistics()])
+                '\n\t'.join(['%d: %s' % (stat, name) for name, stat in phrase_generator.get_phrase_usage_statistics()])
             )
         )
 

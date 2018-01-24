@@ -89,10 +89,6 @@ infinitive_clause:
     infinitive:
       gramm: [verb,inf]
 
-clause:
-  - imperative_clause
-  - infinitive_clause
-
 bracketed:
   punctuation:
 #    left: '"'
