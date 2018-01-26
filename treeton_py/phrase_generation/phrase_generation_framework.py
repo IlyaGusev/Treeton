@@ -488,11 +488,12 @@ class Phrase(object):
         else:
             name = self.phrase_description.name
 
-        result = '%s %s%s%s ' % (
+        result = '%s %s%s%s %s ' % (
             name,
             '<' + self.tag + '>' if self.tag else '',
             '(' + ','.join(self.grammemes) + ')' if self.grammemes else '',
             '(' + ','.join({'->' + cat for cat in self.agree_categories}) + ')' if self.agree_categories else '',
+            self.onto
         )
         if self.lex:
             if self.prefix:
@@ -732,7 +733,7 @@ class PhraseGenerator(object):
 
     def render_string(self, phrase):
         if phrase.inflected_form:
-            result = phrase.inflected_form
+            result = phrase.inflected_form.replace("'"," ")
         elif phrase.root:
             root_repr = self.render_string(phrase.root)
 
@@ -966,15 +967,22 @@ class PhraseGenerator(object):
             return None
 
     @staticmethod
-    def _collect_possible_references(onto, current_reference, target_reference_set):
+    def _collect_possible_references(onto, current_reference, target_reference_set, collect_leaves=False):
         if isinstance(onto, dict):
             for k, sub_onto in onto.items():
                 new_reference = current_reference + [k]
                 target_reference_set.add(tuple(new_reference))
-                PhraseGenerator._collect_possible_references(sub_onto, new_reference, target_reference_set)
+                PhraseGenerator._collect_possible_references(
+                    sub_onto, new_reference, target_reference_set, collect_leaves
+                )
         elif isinstance(onto, list):
             for _id, sub_onto in onto:
-                PhraseGenerator._collect_possible_references(sub_onto, current_reference + [_id], target_reference_set)
+                PhraseGenerator._collect_possible_references(
+                    sub_onto, current_reference + [_id], target_reference_set, collect_leaves
+                )
+        elif collect_leaves:
+            new_reference = current_reference + [onto]
+            target_reference_set.add(tuple(new_reference))
 
     @staticmethod
     def _filter_variants(onto, list_of_phrase_descr_with_ref):
@@ -1006,7 +1014,7 @@ class PhraseGenerator(object):
             (id(pd.phrase_description), tuple(pd.reference or ())) for pd in list_of_phrase_descr_with_ref
         ])
         possible_references = set()
-        self._collect_possible_references(onto, [], possible_references)
+        self._collect_possible_references(onto, [], possible_references, True)
         onto_repr = frozenset(possible_references)
 
         mem_key = PhraseGenerator.ChoosingMemoryKey(

@@ -90,9 +90,27 @@ track_name:
       lookup: name
 
 track_mention:
-  - root: track_keyword
-    name: track_name
-  - track_name
+  onto:
+    type: track
+    name: {}
+  content:
+    - track_name
+    - root: track_keyword
+      name: track_name
+      component: 
+        reference: artist
+        content: artist_mention
+    - root:
+        - root: track_keyword
+          name: track_name
+        - track_name
+      conjunct:
+        - reference: artist
+          content: artist_mention
+        - reference: album
+          content: album_mention
+        - reference: playlist
+          content: playlist_mention
 
 album_keyword:
   extends: common.abstract_named_object
@@ -113,9 +131,23 @@ album_name:
       lookup: name
 
 album_mention:
-  - root: album_keyword
-    name: album_name
-  - album_name
+  onto:
+    type: album
+    name: {}
+  content:
+    - album_name    
+    - root: album_keyword
+      name: album_name
+      component: 
+        reference: artist
+        content: artist_mention
+    - root:
+        - root: album_keyword
+          name: album_name
+        - album_name
+      conjunct:
+        reference: artist
+        content: artist_mention
 
 artist_keyword:
   extends: common.abstract_named_object
@@ -154,10 +186,13 @@ artist_name:
       lookup: name
 
 artist_mention:
-  - root: artist_keyword
-    name:
-      - artist_name
-  - artist_name
+  onto:
+    type: artist
+    name: {}
+  content:
+    - root: artist_keyword
+      name: artist_name
+    - artist_name
 
 playlist_keyword:
   extends: common.abstract_named_object
@@ -169,9 +204,12 @@ playlist_keyword:
     - root:
         - extends: common.abstract_object
           lex: [список, набор]
+          gov:
+            component:
+              orientation: right
+              gramm: [plur]
       component:
-        - extends: common.abstract_object
-          lex: песня
+        - track_keyword 
 
 playlist_name:
   onto:
@@ -185,37 +223,26 @@ playlist_name:
       lookup: name
 
 playlist_mention:
-  - root: playlist_keyword
-    name:
-      - playlist_name
-  - playlist_name
-
-complex_music_entity:
   onto:
-    type: music_entity
-    component: {}
+    type: playlist
+    name: {}
   content:
-    root: common.conj_zero
-    conjunct:
-      reference: component
-      content:
-        - artist_mention
-        - album_mention
-        - track_mention
-        - playlist_mention
+    - root: playlist_keyword
+      name:
+        - playlist_name
+    - playlist_name
 
 all_music:
-  onto:
-    type: music_entity
-  content:
-    - abstract_music
-    - complex_music_entity
+  - abstract_music
+  - album_mention
+  - playlist_mention
+  - artist_mention
+  - track_mention
 
 turn_music_on:
   onto:
     type: switch_on
-    target:
-      type: music_entity
+    target: {}
   content:
     - root: common.infinitive_clause
       infinitive:
@@ -236,7 +263,7 @@ turn_music_on:
             reference: target
             content: all_music
     - root: common.abstract_clause
+      oblig_aux: all_music_verbs
       aux:
-        - all_music_verbs
-        - reference: target
-          content: all_music
+        reference: target
+        content: all_music

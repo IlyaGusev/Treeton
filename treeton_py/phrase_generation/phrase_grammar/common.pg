@@ -74,7 +74,10 @@ conj_zero:
 
 abstract_clause:
   gov:
+    oblig_aux:
+      indecl: true
     aux:
+      indecl: true
       optional: true
 
 imperative_clause:
@@ -121,6 +124,7 @@ abstract_object:
       agree: [case,number,gender,animacy]
       gramm: [adj]
     component:
+      optional: true
       gramm: [noun,gen]
 
 abstract_named_object:
