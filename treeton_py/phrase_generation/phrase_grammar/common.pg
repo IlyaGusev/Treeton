@@ -66,11 +66,11 @@
 # только такие конструкции, в которых каждый из ключей контекста используется (с помощью операции lookup)
 # ровно один раз.
 
-conj_zero:
+conj:
   gov:
     conjunct:
       max_cardinality: 5
-      agree: [case,number,gender,animacy]
+      agree: [case,number,animacy]
 
 abstract_clause:
   gov:
@@ -100,19 +100,19 @@ bracketed:
     inner:
       indecl: true
 
-abstract_entity:
-  gov:
-    purpose:
-      optional: true
-      gramm: [gen]
-      prefix: [для]
-
 abstract_action:
   extends: abstract_entity
   gramm: [verb,fin]
   gov:
     object:
       gramm: [noun,acc]
+
+abstract_entity:
+  gov:
+    purpose:
+      optional: true
+      gramm: [gen]
+      prefix: [для]
 
 abstract_object:
   extends: abstract_entity
@@ -123,9 +123,18 @@ abstract_object:
       max_cardinality: 5
       agree: [case,number,gender,animacy]
       gramm: [adj]
-    component:
+    genetive:
+      optional: true
+      orientation: right
+      gramm: [noun,gen]
+    within:
       optional: true
       gramm: [noun,gen]
+      prefix: [из,с]
+    inside:
+      optional: true
+      gramm: [noun,loc]
+      prefix: [в]
 
 abstract_named_object:
   extends: abstract_object

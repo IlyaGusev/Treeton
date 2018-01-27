@@ -97,13 +97,25 @@ track_mention:
     - track_name
     - root: track_keyword
       name: track_name
-      component: 
+      genetive: 
         reference: artist
         content: artist_mention
+      within: 
+        - reference: album
+          content: album_mention
+        - reference: playlist
+          content: playlist_mention
+      inside:
+        - reference: album
+          content: album_mention
+        - reference: playlist
+          content: playlist_mention
     - root:
-        - root: track_keyword
-          name: track_name
-        - track_name
+        extends: common.conj
+        content:
+          - root: track_keyword
+            name: track_name
+          - track_name
       conjunct:
         - reference: artist
           content: artist_mention
@@ -138,13 +150,15 @@ album_mention:
     - album_name    
     - root: album_keyword
       name: album_name
-      component: 
+      genetive: 
         reference: artist
         content: artist_mention
     - root:
-        - root: album_keyword
-          name: album_name
-        - album_name
+        extends: common.conj
+        content:
+          - root: album_keyword
+            name: album_name
+          - album_name
       conjunct:
         reference: artist
         content: artist_mention
@@ -205,10 +219,10 @@ playlist_keyword:
         - extends: common.abstract_object
           lex: [список, набор]
           gov:
-            component:
+            genetive:
               orientation: right
               gramm: [plur]
-      component:
+      genetive:
         - track_keyword 
 
 playlist_name:

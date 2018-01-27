@@ -1,0 +1,13 @@
+[
+	{
+	  "target": {
+	    "artist": {
+	      "name": "lullaby land",
+	      "type": "artist"
+	    },
+	    "name": "Classical Piano Moods",
+	    "type": "album"
+	  },
+	  "type": "switch_on"
+	}
+]
