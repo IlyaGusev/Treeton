@@ -178,7 +178,7 @@ class Generator:
         self._morph_dict = paradigms_parser.load_dict_from_directory(morph_path, light_weight=True)
 
     def generate(self, phrase_grammar_path, config_path, out_path, top_path, shortest_top_size):
-        phrase_generator = PhraseGenerator(PhraseGrammar(phrase_grammar_path), self._morph_dict)
+        phrase_generator = PhraseGenerator(PhraseGrammar(phrase_grammar_path, self._morph_dict), self._morph_dict)
 
         shortest_toplist = []
 

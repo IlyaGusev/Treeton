@@ -52,9 +52,7 @@ all_music_verbs:
 
 # music objects
 
-abstract_music:
-  onto:
-    type: music_entity
+abstract_music_keyword:
   extends: common.abstract_object
   lex:
     - музыка
@@ -63,6 +61,99 @@ abstract_music:
     - музло
     - песни
     - песня
+
+abstract_music:
+  onto:
+    type: collection
+    proto:
+      type: track
+  content:
+    root:
+      reference: proto
+      content:
+        - root:
+            gov:
+              indecl_genet:
+                optional: true
+                indecl: true
+                orientation: right
+            content:
+              - abstract_music_keyword
+              - gramm: [plur]
+                content: abstract_music_keyword
+              - genre
+          purpose: activity
+          inside:
+            - root:
+                extends: common.abstract_named_object
+                lex: [жанр, стиль]
+              name: genre
+            - reference: album
+              content: album_mention
+            - reference: playlist
+              content: playlist_mention
+          indecl_genet:
+            reference: epoch
+            content: 
+              gramm: [plur]
+              tag: epoch
+              content:
+                - onto: fifties
+                  lex: [80-х,пятидесятых]
+                - onto: sixties
+                  lex: [60-х,шестидесятых]
+                - onto: seventies
+                  lex: [70-х,семидесятых]
+                - onto: eighties
+                  lex: [80-х,восьмидесятых]
+                - onto: nineties
+                  lex: [90-х,девяностых]
+                - onto: zeroes
+                  lex: [нулевых]
+          genetive: 
+            reference: artist
+            content: artist_mention
+          within: 
+            - reference: album
+              content: album_mention
+            - reference: playlist
+              content: playlist_mention
+
+genre:
+  onto:
+    genre: {}
+  extends: common.abstract_object
+  root:
+    reference: genre
+    gramm: [sing]
+    tag: genre
+    content:
+      - onto: rock
+        lex: [рок]
+      - onto: jazz
+        lex: [джаз]
+      - onto: blues
+        lex: [блюз]
+
+activity:
+  onto:
+    activity: {}
+  extends: common.abstract_object
+  root:
+    tag: activity
+    reference: activity
+    gramm: [sing]
+    content:
+      - onto: work-background
+        lex: [работа]
+      - onto: workout
+        lex: [тренировка,спорт,бег,марафон]
+      - onto: run
+        lex: [бег,марафон]        
+      - onto: party
+        lex: [вечеринка,тусовка,пати]
+      - onto: sex
+        lex: [секс]
 
 track_keyword:
   extends: common.abstract_named_object
@@ -153,15 +244,15 @@ album_mention:
       genetive: 
         reference: artist
         content: artist_mention
-    - root:
-        extends: common.conj
-        content:
-          - root: album_keyword
-            name: album_name
-          - album_name
-      conjunct:
-        reference: artist
-        content: artist_mention
+#    - root:
+#        extends: common.conj
+#        content:
+#          - root: album_keyword
+#            name: album_name
+#          - album_name
+#      conjunct:
+#        reference: artist
+#        content: artist_mention
 
 artist_keyword:
   extends: common.abstract_named_object
@@ -276,8 +367,8 @@ turn_music_on:
           object:
             reference: target
             content: all_music
-    - root: common.abstract_clause
-      oblig_aux: all_music_verbs
-      aux:
-        reference: target
-        content: all_music
+#    - root: common.abstract_clause
+#      oblig_aux: all_music_verbs
+#      aux:
+#        reference: target
+#        content: all_music

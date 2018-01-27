@@ -1,12 +1,12 @@
 [
 	{
 	  "target": {
-	    "artist": {
-	      "name": "lullaby land",
-	      "type": "artist"
+	    "proto": {
+	      "epoch": "zeroes",
+	      "genre": "jazz",
+	      "type": "track"
 	    },
-	    "name": "Classical Piano Moods",
-	    "type": "album"
+	    "type": "collection"
 	  },
 	  "type": "switch_on"
 	}

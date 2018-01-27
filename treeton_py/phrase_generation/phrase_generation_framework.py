@@ -24,6 +24,35 @@ def list_data_files(directory):
             yield name, path
 
 
+def _update_grammemes(old_grammemes, new_grammemes, morph_engine):
+    if old_grammemes is None:
+        return set()
+
+    if new_grammemes:
+        new_known_categories = set()
+        for gr in new_grammemes:
+            cat = morph_engine.get_category_for_grammeme(gr)
+            if cat:
+                if cat in new_known_categories:
+                    logger.error('Duplicate grammeme for category %s detected, skipping' % cat)
+                else:
+                    new_known_categories.add(cat)
+
+        union_grammemes = set()
+
+        for gr in old_grammemes:
+            cat = morph_engine.get_category_for_grammeme(gr)
+            if not cat or cat not in new_known_categories:
+                union_grammemes.add(gr)
+
+        union_grammemes.update(new_grammemes)
+        return union_grammemes
+    elif new_grammemes is None:
+        return None
+    else:
+        return old_grammemes
+
+
 @attr.s
 class PhraseDescription(object):
     name = attr.ib()
@@ -103,10 +132,11 @@ class PhraseDescriptionContext(object):
 
 
 class PhraseGrammar(object):
-    def __init__(self, grammar_path):
+    def __init__(self, grammar_path, morph_engine):
         self._phrase_descriptions = {}
         self._inline_phrase_descriptions = []
         self._raw_phrase_data = None
+        self._morph_engine = morph_engine
         self._load(grammar_path)
 
     def is_loaded(self):
@@ -235,12 +265,14 @@ class PhraseGrammar(object):
                     if predecessor_phrase_descr.punctuation_info:
                         phrase_description.punctuation_info = dict(predecessor_phrase_descr.punctuation_info)
 
-                    phrase_description.grammemes.update(predecessor_phrase_descr.grammemes)
+                    phrase_description.grammemes = _update_grammemes(
+                        phrase_description.grammemes, predecessor_phrase_descr.grammemes, self._morph_engine
+                    )
                     self._merge_gov_models(phrase_description.gov_models, predecessor_phrase_descr.gov_models)
                     if phrase_description.onto is None and predecessor_phrase_descr.onto:
                         phrase_description.onto = {}
                     # noinspection PyTypeChecker
-                    self._merge_onto(phrase_description.onto, predecessor_phrase_descr.onto)
+                    phrase_description.onto = self._merge_onto(phrase_description.onto, predecessor_phrase_descr.onto)
                     phrase_description.predecessors.add(predecessor_name)
 
             raw_gov_models = data.get('gov')
@@ -251,11 +283,10 @@ class PhraseGrammar(object):
             onto = data.get('onto')
 
             if onto:
-                assert isinstance(onto, dict)
                 if phrase_description.onto is None:
                     phrase_description.onto = {}
                 # noinspection PyTypeChecker
-                self._merge_onto(phrase_description.onto, onto)
+                phrase_description.onto = self._merge_onto(phrase_description.onto, onto)
 
             tag = data.get('tag')
             if tag:
@@ -271,7 +302,9 @@ class PhraseGrammar(object):
 
             if gramm:
                 assert isinstance(gramm, list)
-                phrase_description.grammemes.update(gramm)
+                phrase_description.grammemes = _update_grammemes(
+                    phrase_description.grammemes, gramm, self._morph_engine
+                )
 
             if lex:
                 if not isinstance(lex, list):
@@ -430,7 +463,10 @@ class PhraseGrammar(object):
     @staticmethod
     def _merge_onto(old_onto, onto):
         if not onto:
-            return
+            return old_onto
+
+        if not isinstance(onto, dict):
+            return deepcopy(onto)
 
         for k, v in onto.items():
             old_v = old_onto.get(k)
@@ -445,9 +481,11 @@ class PhraseGrammar(object):
                             old_v, v, old_onto, onto
                         )
                     )
-                PhraseGrammar._merge_onto(old_v, v)
+                old_onto[k] = PhraseGrammar._merge_onto(old_v, v)
             else:
                 old_onto[k] = deepcopy(v)
+
+        return old_onto
 
 
 @attr.s
@@ -600,31 +638,11 @@ class PhraseGenerator(object):
         for name in all_all_names:
             self._phrase_usage_stats[name] += 1
 
-    def _update_grammemes(self, phrase, new_grammemes):
-        if phrase.grammemes is None:
-            return
-
-        new_known_categories = set()
-        for gr in new_grammemes:
-            cat = self._morph_engine.get_category_for_grammeme(gr)
-            if cat:
-                if cat in new_known_categories:
-                    logger.error('Duplicate grammeme for category %s detected, skipping' % cat)
-                else:
-                    new_known_categories.add(cat)
-
-        union_grammemes = set()
-
-        for gr in phrase.grammemes:
-            cat = self._morph_engine.get_category_for_grammeme(gr)
-            if not cat or cat not in new_known_categories:
-                union_grammemes.add(gr)
-
-        union_grammemes.update(new_grammemes)
-        phrase.grammemes = union_grammemes
+    def _update_phrase_grammemes(self, phrase, new_grammemes):
+        phrase.grammemes = _update_grammemes(phrase.grammemes, new_grammemes, self._morph_engine)
 
         if phrase.root:
-            self._update_grammemes(phrase.root, new_grammemes)
+            self._update_phrase_grammemes(phrase.root, new_grammemes)
 
     def _find_deepest_root(self, phrase):
         if phrase.lex:
@@ -657,11 +675,12 @@ class PhraseGenerator(object):
 
                 possible_gramms = self._morph_engine.get_possible_grammemes(category)
 
-                for gr in agree_host.grammemes:
-                    if gr in possible_gramms:
-                        new_grammemes.add(gr)
-                        found = True
-                        break
+                if agree_host.grammemes:
+                    for gr in agree_host.grammemes:
+                        if gr in possible_gramms:
+                            new_grammemes.add(gr)
+                            found = True
+                            break
 
                 if not found:
                     categories_to_extract.add(category)
@@ -700,7 +719,7 @@ class PhraseGenerator(object):
                     new_grammemes.update(extracted_values)
 
         if new_grammemes:
-            self._update_grammemes(phrase, new_grammemes)
+            self._update_phrase_grammemes(phrase, new_grammemes)
 
         if phrase.lex:
             if phrase.grammemes is not None:
@@ -733,7 +752,7 @@ class PhraseGenerator(object):
 
     def render_string(self, phrase):
         if phrase.inflected_form:
-            result = phrase.inflected_form.replace("'"," ")
+            result = phrase.inflected_form.replace("'", " ")
         elif phrase.root:
             root_repr = self.render_string(phrase.root)
 
@@ -821,7 +840,9 @@ class PhraseGenerator(object):
             # None succesfully matches nothing, empty dict succesfully matches all
             return {} if strict or check_onto is None else current_onto
 
-        assert isinstance(check_onto, dict)
+        if not isinstance(check_onto, dict):
+            return current_onto if current_onto == check_onto else None
+
         # find all variants of matching current_onto with check_onto
 
         if isinstance(current_onto, list):
@@ -992,7 +1013,7 @@ class PhraseGenerator(object):
             phrase_description = phrase_descr_with_ref.phrase_description
 
             sub_onto = PhraseGenerator._process_reference(reference, onto)
-            if sub_onto is None or not isinstance(sub_onto, (list, dict)):
+            if sub_onto is None:
                 continue
 
             # noinspection PyTypeChecker
@@ -1172,10 +1193,9 @@ class PhraseGenerator(object):
 
                             gov_model = result.root.phrase_description.gov_models.get(semantic_role)
                             child_phrase.agree_categories = set(gov_model.agree_categories)
-                            if gov_model.indecl:
-                                child_phrase.grammemes = None
-                            else:
-                                self._update_grammemes(child_phrase, gov_model.grammemes)
+                            self._update_phrase_grammemes(
+                                child_phrase, None if gov_model.indecl else gov_model.grammemes
+                            )
                             if gov_model.prefixes:
                                 child_phrase.prefix = random.choice(list(gov_model.prefixes))
 

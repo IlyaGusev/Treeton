@@ -141,5 +141,6 @@ abstract_named_object:
   gov:
     name:
       orientation: right
+      gramm: [nom]
 
 abstract_attribute: {}
