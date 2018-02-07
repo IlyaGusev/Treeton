@@ -106,6 +106,7 @@ class ParadigmsParser:
         logging.info('encountered keys %s' % encountered_keys)
 
         if light_weight:
+            morph_dict.pack()
             path_to_binary = path + '/.bin_morph'
             with open(path_to_binary, 'wb') as handle:
                 _pickle.dump(morph_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)

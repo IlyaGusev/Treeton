@@ -1,5 +1,7 @@
 import attr
 import logging
+import itertools
+from marisa_trie import Trie
 
 from .morph_interface import MorphEngine, MorphAnResult
 
@@ -23,7 +25,7 @@ class Paradigm(object):
     def from_dict(cls, data, light=False):
         p = Paradigm(
             lemma=MorphDictionary.normalize(data['lemma']),
-            id=data['id'],
+            id=int(data['id']),
             frequency=None if light else data['frequency'],
             status=data['status'],
             zindex=None if light else data['zindex'],
@@ -103,8 +105,7 @@ class UnparsedStarlingParadigm(object):
 
 
 @attr.s(hash=True)
-class ParadigmElement(object):
-    form = attr.ib()
+class ParadigmElementInfo(object):
     starling_form = attr.ib()
     accent = attr.ib()
     awkward = attr.ib(default=False)
@@ -112,6 +113,12 @@ class ParadigmElement(object):
     yo_place = attr.ib(default=None)
     starling_infl_info = attr.ib(default=None)
     gramm = attr.ib(default=attr.Factory(frozenset))
+
+
+@attr.s(hash=True)
+class ParadigmElement(object):
+    form = attr.ib()
+    info = attr.ib()
     parent_paradigm = attr.ib(default=None)
 
     @classmethod
@@ -131,13 +138,15 @@ class ParadigmElement(object):
 
         return ParadigmElement(
             form=MorphDictionary.normalize(form),
-            starling_form=starling_form,
-            accent=data['accent'],
-            awkward=data.get('awkward'),
-            sec_accent=data.get('sec_accent'),
-            yo_place=data.get('yo_place'),
-            starling_infl_info=None if light else data.get('starling_infl_info'),
-            gramm=frozenset([g.lower() for g in data['gramm']])
+            info=ParadigmElementInfo(
+                starling_form=starling_form,
+                accent=data['accent'],
+                awkward=data.get('awkward'),
+                sec_accent=data.get('sec_accent'),
+                yo_place=data.get('yo_place'),
+                starling_infl_info=None if light else data.get('starling_infl_info'),
+                gramm=frozenset([g.lower() for g in data['gramm']])
+            )
         )
 
 
@@ -181,7 +190,7 @@ class MorphDictionary(MorphEngine):
             return None
 
         return [
-            pe.form
+            self.untrie_lex(pe.form)
             for pe in paradigm.elements
             if gramm.issubset(self.count_gramm(pe))
         ]
@@ -190,9 +199,22 @@ class MorphDictionary(MorphEngine):
     def normalize(s):
         return s.strip().lower()
 
-    @staticmethod
-    def count_gramm(paradigm_element):
-        gramm = set(paradigm_element.gramm).union(paradigm_element.parent_paradigm.gramm)
+    def count_gramm(self, paradigm_element):
+        if isinstance(paradigm_element.info.gramm, int):
+            gramm = paradigm_element.info.gramm | paradigm_element.parent_paradigm.gramm
+
+            gramm_set = set()
+            current_gid = 1
+            while gramm:
+                if gramm & 1:
+                    gramm_set.add(self._gid_to_gramms[current_gid])
+
+                current_gid <<= 1
+                gramm >>= 1
+
+            gramm = gramm_set
+        else:
+            gramm = set(paradigm_element.info.gramm).union(paradigm_element.parent_paradigm.gramm)
 
         if 'adj' in gramm and 'pos' in gramm and 'inan' not in gramm and 'anim' not in gramm:
             gramm.add('inan')
@@ -200,21 +222,39 @@ class MorphDictionary(MorphEngine):
 
         return frozenset(gramm)
 
+    def untrie_lex(self, int_index):
+        if not self._lex_trie:
+            return int_index
+
+        assert isinstance(int_index, int)
+
+        return self._lex_trie.restore_key(int_index)
+
     def analyse(self, word):
+        normalized_word = self.normalize(word)
+        if self._lex_trie:
+            normalized_word = self._lex_trie.get(normalized_word)
+            if not normalized_word:
+                return []
+
         return [
             MorphAnResult(
                 paradigm_id=pe.parent_paradigm.id,
-                lemma=pe.parent_paradigm.lemma,
-                accent=pe.accent,
+                lemma=self.untrie_lex(pe.parent_paradigm.lemma),
+                accent=pe.info.accent,
                 gramm=self.count_gramm(pe)
             )
-            for pe in self._paradigm_elements.get(self.normalize(word), [])
+            for pe in self._paradigm_elements.get(normalized_word, [])
         ]
 
     def __init__(self, light_weight=False):
         self._paradigms = {}  # id -> Paradigm
         self._paradigm_elements = {}  # word -> set of ParadigmElement
         self._light_weight = light_weight
+        self._lex_trie = None
+        self._gramm_trie = None
+        self._gramms_to_gid = None
+        self._gid_to_gramms = None
 
     def get_paradigm(self, paradigm_id):
         return self._paradigms.get(paradigm_id)
@@ -239,9 +279,50 @@ class MorphDictionary(MorphEngine):
 
             list_of_pe.append(pe)
 
-    def load_list(self, paradigms_list):
-        for paradigm_data in paradigms_list:
-            self.load_paradigm(paradigm_data)
+    def _pack_gramm(self, gramm):
+        packed_gramm = 0
+        for g in gramm:
+            gid = self._gramms_to_gid.get(g)
+            if not gid:
+                gid = 1 << len(self._gramms_to_gid)
+                self._gramms_to_gid[g] = gid
+                self._gid_to_gramms[gid] = g
+
+            packed_gramm |= gid
+
+        return packed_gramm
+
+    def pack(self):
+        assert self._light_weight, 'Packing is allowed only in light weight mode'
+
+        self._lex_trie = Trie(itertools.chain(
+            (p.lemma for p in self._paradigms.values()),
+            (pe.form for pe_list in self._paradigm_elements.values() for pe in pe_list)
+        ))
+
+        self._gramms_to_gid = {}
+        self._gid_to_gramms = {}
+
+        for p in self._paradigms.values():
+            p.lemma = self._lex_trie[p.lemma]
+            p.gramm = self._pack_gramm(p.gramm)
+
+        packed_pe_infos = {}
+
+        packed_paradigm_elements = {}
+        for form, pe_list in self._paradigm_elements.items():
+            for pe in pe_list:
+                pe.form = self._lex_trie[pe.form]
+                pe.info.gramm = self._pack_gramm(pe.info.gramm)
+                packed_pe_info = packed_pe_infos.get(pe.info)
+                if not packed_pe_info:
+                    packed_pe_infos[pe.info] = pe.info
+                else:
+                    pe.info = packed_pe_info
+
+            packed_paradigm_elements[self._lex_trie[form]] = pe_list
+
+        self._paradigm_elements = packed_paradigm_elements
 
     def size(self):
         return len(self._paradigms)
