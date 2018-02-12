@@ -105,14 +105,27 @@ class UnparsedStarlingParadigm(object):
 
 
 @attr.s(hash=True)
-class ParadigmElementInfo(object):
+class LightParadigmElementInfo(object):
+    flags = attr.ib()
+    gramm = attr.ib()
+
+    def is_awkward(self):
+        return self.flags & 1
+
+    def get_accent_place(self):
+        return (self.flags >> 1) & 0xff
+
+    def get_sec_accent_place(self):
+        return (self.flags >> 17) & 0xff
+
+    def get_yo_place(self):
+        return (self.flags >> 33) & 0xff
+
+
+@attr.s(hash=True)
+class ParadigmElementInfo(LightParadigmElementInfo):
     starling_form = attr.ib()
-    accent = attr.ib()
-    awkward = attr.ib(default=False)
-    sec_accent = attr.ib(default=None)
-    yo_place = attr.ib(default=None)
-    starling_infl_info = attr.ib(default=None)
-    gramm = attr.ib(default=attr.Factory(frozenset))
+    starling_infl_info = attr.ib()
 
 
 @attr.s(hash=True)
@@ -136,17 +149,32 @@ class ParadigmElement(object):
         else:
             starling_form = None
 
+        accent = data['accent']
+        assert accent <= 255
+
+        sec_accent = data.get('sec_accent', 0)
+        assert sec_accent <= 255
+
+        yo_place = data.get('yo_place', 0)
+        assert yo_place <= 255
+
+        awkward = 1 if data.get('awkward') else 0
+
+        gramm = frozenset([g.lower() for g in data['gramm']])
+
+        flags = awkward & (accent << 1) & (sec_accent << 17) & (yo_place << 33)
+
         return ParadigmElement(
             form=MorphDictionary.normalize(form),
-            info=ParadigmElementInfo(
-                starling_form=starling_form,
-                accent=data['accent'],
-                awkward=data.get('awkward'),
-                sec_accent=data.get('sec_accent'),
-                yo_place=data.get('yo_place'),
-                starling_infl_info=None if light else data.get('starling_infl_info'),
-                gramm=frozenset([g.lower() for g in data['gramm']])
-            )
+            info=LightParadigmElementInfo(
+                    flags=flags,
+                    gramm=gramm
+                ) if light else ParadigmElementInfo(
+                    flags=flags,
+                    gramm=gramm,
+                    starling_form=starling_form,
+                    starling_infl_info=data.get('starling_infl_info')
+                )
         )
 
 
@@ -241,7 +269,7 @@ class MorphDictionary(MorphEngine):
             MorphAnResult(
                 paradigm_id=pe.parent_paradigm.id,
                 lemma=self.untrie_lex(pe.parent_paradigm.lemma),
-                accent=pe.info.accent,
+                accent=pe.info.get_accent_place(),
                 gramm=self.count_gramm(pe)
             )
             for pe in self._paradigm_elements.get(normalized_word, [])
