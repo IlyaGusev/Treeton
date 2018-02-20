@@ -7,6 +7,7 @@ import ruamel.yaml as yaml
 
 from copy import deepcopy
 from itertools import chain
+from morph.morph_interface import SynthResult
 
 
 logger = logging.getLogger(__name__)
@@ -53,7 +54,7 @@ def _update_grammemes(old_grammemes, new_grammemes, morph_engine):
         return old_grammemes
 
 
-@attr.s
+@attr.s(repr=False)
 class PhraseDescription(object):
     name = attr.ib()
     onto = attr.ib(default=None)
@@ -74,12 +75,12 @@ class PhraseDescription(object):
             yield phrase_description
 
 
-@attr.s
+@attr.s(repr=False)
 class PhraseDescriptionDisjunctive(PhraseDescription):
     phrases_variants = attr.ib(default=attr.Factory(list))  # list of PhraseDescriptionWithReference
 
 
-@attr.s
+@attr.s(repr=False)
 class PhraseDescriptionComposite(PhraseDescription):
     root_variants = attr.ib(default=attr.Factory(list))  # list of PhraseDescriptionWithReference
     root_formulae = attr.ib(default=attr.Factory(list))
@@ -87,12 +88,12 @@ class PhraseDescriptionComposite(PhraseDescription):
     children_formulae = attr.ib(default=attr.Factory(dict))
 
 
-@attr.s
+@attr.s(repr=False)
 class PhraseDescriptionLookup(PhraseDescription):
     label = attr.ib(default=attr.Factory(list))
 
 
-@attr.s
+@attr.s(repr=False)
 class PhraseDescriptionLex(PhraseDescription):
     lex_variants = attr.ib(default=attr.Factory(list))
 
@@ -508,7 +509,7 @@ class Phrase(object):
     agree_categories = attr.ib(default=attr.Factory(set))
 
     morph_an_results = attr.ib(default=None)
-    inflected_form = attr.ib(default=None)
+    synth_result = attr.ib(default=None)
 
     def _depth(self):
         depth = 0
@@ -536,7 +537,7 @@ class Phrase(object):
         if self.lex:
             if self.prefix:
                 result += self.prefix + ' '
-            result += '%s::%s\n' % (self.lex, self.inflected_form)
+            result += '%s::%s\n' % (self.lex, self.synth_result.form if self.synth_result else None)
         elif self.root:
             result += '[\n'
             result += '%sroot: %s' % ('\t' * (self._depth() + 1), self.root.__str__())
@@ -596,7 +597,7 @@ class PhraseGenerator(object):
             current_possible_references = set()
             self._collect_possible_references(matched_onto, [], current_possible_references)
 
-            if all_possible_references != current_possible_references:
+            if all_possible_references != current_possible_references or not self._inflect(phrase):
                 fail_count += 1
                 continue
 
@@ -605,8 +606,6 @@ class PhraseGenerator(object):
             limit -= 1
 
             self._update_usage_stats(phrase)
-
-            self._inflect(phrase)
             yield phrase
 
         yield None
@@ -655,11 +654,14 @@ class PhraseGenerator(object):
         return phrase
 
     def _calculate_morph_an_results(self, phrase):
-        if phrase.lex and phrase.morph_an_results is None:
-            phrase.morph_an_results = self._morph_engine.analyse(phrase.lex)
-
-            if not phrase.morph_an_results:
-                self._detected_unknown_words.add(phrase.lex)
+        if phrase.morph_an_results is None:
+            phrase.morph_an_results = []
+            if phrase.lex:
+                for lex_variant in phrase.lex:
+                    morph_an_results = self._morph_engine.analyse(lex_variant)
+                    if not morph_an_results:
+                        self._detected_unknown_words.add(lex_variant)
+                    phrase.morph_an_results += morph_an_results
 
     def _inflect(self, phrase):
         categories_to_extract = set()
@@ -690,27 +692,25 @@ class PhraseGenerator(object):
             assert phrase.parent.root != phrase
             agree_host = self._find_deepest_root(phrase.parent.root)
 
-            self._calculate_morph_an_results(agree_host)
-
-            if agree_host.morph_an_results:
+            if agree_host.synth_result:
                 extracted_values = {category: None for category in categories_to_extract}
-                for morph_an_result in agree_host.morph_an_results:
-                    for gr in morph_an_result.gramm:
-                        category = self._morph_engine.get_category_for_grammeme(gr)
+                for gr in agree_host.synth_result.gramm:
+                    category = self._morph_engine.get_category_for_grammeme(gr)
 
-                        if not category or category not in extracted_values:
-                            continue
+                    if not category or category not in extracted_values:
+                        continue
 
-                        old_value = extracted_values.get(category)
-                        if old_value and old_value != gr:
-                            extracted_values.pop(category)
-                        elif not old_value:
-                            extracted_values[category] = gr
+                    old_value = extracted_values.get(category)
+                    if old_value and old_value != gr:
+                        extracted_values.pop(category)
+                    elif not old_value:
+                        extracted_values[category] = gr
 
                 for c in categories_to_extract:
                     if c not in extracted_values:
                         logger.warning(
-                            'Unable to extract the value of category "%s", word "%s"' % (c, agree_host.lex)
+                            'Unable to extract the value of category "%s", lex "%s", synth_result "%s"' %
+                            (c, agree_host.lex, agree_host.synth_result)
                         )
 
                 extracted_values = {gr for gr in extracted_values.values() if gr}
@@ -722,37 +722,39 @@ class PhraseGenerator(object):
             self._update_phrase_grammemes(phrase, new_grammemes)
 
         if phrase.lex:
-            if phrase.grammemes is not None:
-                self._calculate_morph_an_results(phrase)
             if phrase.grammemes is not None and phrase.morph_an_results:
-                inflection_variants = []
+                synth_variants = []
                 for morph_an_result in phrase.morph_an_results:
-                    inflection_variants += self._morph_engine.synthesise(
+                    synth_variants += self._morph_engine.synthesise(
                         morph_an_result.paradigm_id,
                         phrase.grammemes or set()
                     )
 
-                if inflection_variants:
-                    phrase.inflected_form = random.choice(inflection_variants)
+                if synth_variants:
+                    phrase.synth_result = random.choice(synth_variants)
                 else:
                     logger.warning('Unable to inflect "%s" with gramemmes %s' % (
                         phrase.lex,
                         phrase.grammemes
                     ))
-                    phrase.inflected_form = phrase.lex
+                    return False
             else:
-                phrase.inflected_form = phrase.lex
+                phrase.synth_result = SynthResult(form=random.choice(phrase.lex), gramm=frozenset())
 
         if phrase.root:
-            self._inflect(phrase.root)
+            if not self._inflect(phrase.root):
+                return False
 
         for child_phrases in phrase.children.values():
             for child_phrase in child_phrases:
-                self._inflect(child_phrase)
+                if not self._inflect(child_phrase):
+                    return False
+
+        return True
 
     def render_string(self, phrase):
-        if phrase.inflected_form:
-            result = phrase.inflected_form.replace("'", " ")
+        if phrase.synth_result:
+            result = phrase.synth_result.form.replace("'", " ")
         elif phrase.root:
             root_repr = self.render_string(phrase.root)
 
@@ -1128,9 +1130,11 @@ class PhraseGenerator(object):
                 result.onto = self._onto_match(onto, phrase_description.onto, strict=True)
 
             if isinstance(phrase_description, PhraseDescriptionLex):
-                result.lex = random.choice(phrase_description.lex_variants)
+                result.lex = deepcopy(phrase_description.lex_variants)
+                self._calculate_morph_an_results(result)
             elif isinstance(phrase_description, PhraseDescriptionLookup):
-                result.lex = self._lookup(onto, phrase_description.lookup)
+                result.lex = [self._lookup(onto, phrase_description.lookup)]
+                self._calculate_morph_an_results(result)
             else:
                 assert isinstance(phrase_description, PhraseDescriptionComposite)
 
@@ -1177,6 +1181,10 @@ class PhraseGenerator(object):
 
                                 if not child_phrase and not children_phrases and not gov_model.optional:
                                     return None
+
+                                if child_phrase and not child_matched_onto and random.choice([0, 1]):
+                                    if gov_model.optional or any(children_phrases):
+                                        child_phrase = None
 
                                 if child_phrase:
                                     result.onto = self._update_onto(result.onto, child_matched_onto)

@@ -11,6 +11,12 @@ class MorphAnResult:
     gramm = attr.ib()
 
 
+@attr.s
+class SynthResult:
+    form = attr.ib()
+    gramm = attr.ib()
+
+
 class MorphEngine:
     __metaclass__ = ABCMeta
 

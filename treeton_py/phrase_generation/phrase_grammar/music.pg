@@ -54,13 +54,17 @@ all_music_verbs:
 
 abstract_music_keyword:
   extends: common.abstract_object
-  lex:
-    - музыка
-    - музон
-    - музяка
-    - музло
-    - песни
-    - песня
+  content:
+    - gramm: [sing]
+      lex:
+        - музыка
+        - музон
+        - музяка
+        - музло
+        - песня
+    - gramm: [plur]
+      lex: [песня]
+
 
 abstract_music:
   onto:
@@ -71,53 +75,56 @@ abstract_music:
     root:
       reference: proto
       content:
-        - root:
-            gov:
-              indecl_genet:
-                optional: true
-                indecl: true
-                orientation: right
+        root:
+          - abstract_music_keyword
+          - genre
+        purpose:
+          - activity_purpose
+          - root:
+              extends: common.abstract_named_object
+              lex: [прослушивание,воспроизведение,проигрывание,игра,звучание]
+            inside_oblig: activity_area
+        attr: activity_attr
+        free_attr:
+          lex: [хороший, прикольный, нормальный, зачетный, клевый]
+        inside_acc:
+          gramm: [sing]
+          content: activity_area
+        inside:
+          - root:
+              extends: common.abstract_named_object
+              lex: [жанр, стиль]
+            name: genre
+          - reference: album
+            content: album_mention
+          - reference: playlist
+            content: playlist_mention
+        indecl_genet:
+          reference: epoch
+          content:
+            gramm: [plur]
+            tag: epoch
             content:
-              - abstract_music_keyword
-              - gramm: [plur]
-                content: abstract_music_keyword
-              - genre
-          purpose: activity
-          inside:
-            - root:
-                extends: common.abstract_named_object
-                lex: [жанр, стиль]
-              name: genre
-            - reference: album
-              content: album_mention
-            - reference: playlist
-              content: playlist_mention
-          indecl_genet:
-            reference: epoch
-            content: 
-              gramm: [plur]
-              tag: epoch
-              content:
-                - onto: fifties
-                  lex: [80-х,пятидесятых]
-                - onto: sixties
-                  lex: [60-х,шестидесятых]
-                - onto: seventies
-                  lex: [70-х,семидесятых]
-                - onto: eighties
-                  lex: [80-х,восьмидесятых]
-                - onto: nineties
-                  lex: [90-х,девяностых]
-                - onto: zeroes
-                  lex: [нулевых]
-          genetive: 
-            reference: artist
-            content: artist_mention
-          within: 
-            - reference: album
-              content: album_mention
-            - reference: playlist
-              content: playlist_mention
+              - onto: fifties
+                lex: [80-х,пятидесятых]
+              - onto: sixties
+                lex: [60-х,шестидесятых]
+              - onto: seventies
+                lex: [70-х,семидесятых]
+              - onto: eighties
+                lex: [80-х,восьмидесятых]
+              - onto: nineties
+                lex: [90-х,девяностых]
+              - onto: zeroes
+                lex: [нулевых]
+        genetive:
+          reference: artist
+          content: artist_mention
+        within:
+          - reference: album
+            content: album_mention
+          - reference: playlist
+            content: playlist_mention
 
 genre:
   onto:
@@ -135,25 +142,120 @@ genre:
       - onto: blues
         lex: [блюз]
 
-activity:
+heavy_transport:
+  lex:
+    - автомобиль
+    - машина
+    - транспорт
+    - грузовик
+
+transport:
+  - heavy_transport
+  - lex:
+      - мотоцикл
+      - байк
+      - скутер
+
+activity_attr:
   onto:
     activity: {}
-  extends: common.abstract_object
   root:
     tag: activity
     reference: activity
-    gramm: [sing]
     content:
+      - onto: wake-up
+        lex: [пробуждающий,вдохновляющий,бодрящий,мощный,сильный]
+      - onto: driving
+        lex: [автомобильный]
+      - onto: beloved
+        lex: [романтический,нежный,чувственный,любовный]
+      - onto: fall-asleep
+        lex: [сонный,успокаивающий,успокоительный,расслабляющий,расслабленный]
       - onto: work-background
-        lex: [работа]
+        lex: [рабочий,фоновый,интерьерный,легкий]
       - onto: workout
-        lex: [тренировка,спорт,бег,марафон]
-      - onto: run
-        lex: [бег,марафон]        
+        lex: [спортивный,велосипедный,беговой]
+      - onto: party
+        lex: [праздничный]
+      - onto: sex
+        lex: [сексуальный,эротичный,порно,пронографичный,порнографический,взрослый]
+      - onto: road-trip
+        lex: [дорожный,прогулочный]
+
+activity_purpose:
+  onto:
+    activity: {}
+  root:
+    tag: activity
+    reference: activity
+    content:
+      - gramm: [sing]
+        content:
+          - onto: wake-up
+            lex: [пробуждение, бессоница]
+          - onto: driving
+            lex:
+              # автомобиль (в контекстах "музыка для автомобиля")
+              - transport
+              # просто вождение/езда
+              - lex: [вождение, езда]
+              # вождение машины
+              - root:
+                  extends: common.abstract_object
+                  lex: вождение
+                genetive_uniq: transport
+              # автомобильная езда
+              - root:
+                  extends: common.abstract_object
+                  lex: езда
+                attr_uniq:
+                  lex: [автомобильный]
+              # езда на мотоцикле
+              - root:
+                  extends: common.abstract_object
+                  lex: [езда,перемещение]
+                on_the: transport
+              # вождение скутера
+              - root:
+                  extends: common.abstract_object
+                  lex: [вождение,езда]
+                inside: transport
+          - onto: fall-asleep
+            lex: [сон,успокоение,покой,расслабление,расслабон,релакс]
+          - onto: work-background
+            lex: [работа]
+          - onto: workout
+            lex: [спорт,велосипед,кач,борцуха,бег,марафон]
+          - onto: party
+            lex: [пати]
+          - onto: sex
+            lex: [секс]
+      - onto: road-trip
+        lex: [путешествие, пикник]
+      - onto: workout
+        lex: [тренировка, покатушка, тренажерка, пробежка]
       - onto: party
         lex: [вечеринка,тусовка,пати]
-      - onto: sex
-        lex: [секс]
+      - onto: beloved
+        lex:
+          - свидание
+          - root:
+              extends: common.abstract_object
+              lex: [встреча,свидание]
+            attr_uniq:
+              lex: [романтический,любовный]
+
+activity_area:
+  onto:
+    activity: {}
+  root:
+    tag: activity
+    reference: activity
+    content:
+      - onto: driving
+        content: heavy_transport
+      - onto: road-trip
+        lex: [путешествие]
 
 track_keyword:
   extends: common.abstract_named_object
@@ -268,16 +370,10 @@ artist_keyword:
       - коллектив
       - ансамбль
     - root:
-        - extends: common.abstract_object
-          lex: коллектив
-          gov:
-            attr:
-              optional: false
-              orientation: left
-              max_cardinality: 1
-      attr:
-        - extends: common.abstract_attribute
-          lex: музыкальный
+        extends: common.abstract_object
+        lex: коллектив
+      attr_oblig:
+        lex: музыкальный
 
 artist_name:
   onto:
@@ -307,14 +403,11 @@ playlist_keyword:
       - подборка
       - треклист
     - root:
-        - extends: common.abstract_object
-          lex: [список, набор]
-          gov:
-            genetive:
-              orientation: right
-              gramm: [plur]
-      genetive:
-        - track_keyword 
+        extends: common.abstract_object
+        lex: [список, набор]
+      genetive_oblig:
+        gramm: [plur]
+        content: track_keyword
 
 playlist_name:
   onto:

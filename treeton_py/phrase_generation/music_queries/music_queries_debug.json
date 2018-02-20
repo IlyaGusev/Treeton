@@ -1,12 +1,11 @@
 [
 	{
 	  "target": {
-	    "proto": {
-	      "epoch": "zeroes",
-	      "genre": "jazz",
-	      "type": "track"
-	    },
-	    "type": "collection"
+		"proto": {
+		  "epoch": "nineties",
+		  "type": "track"
+		},
+		"type": "collection"
 	  },
 	  "type": "switch_on"
 	}

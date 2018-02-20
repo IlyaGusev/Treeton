@@ -111,22 +111,54 @@ abstract_entity:
   gov:
     purpose:
       optional: true
-      gramm: [gen]
+      gramm: [noun,gen]
       prefix: [для]
 
 abstract_object:
   extends: abstract_entity
   gramm: [noun,nom,sing]
   gov:
+    free_attr:
+      optional: true
+      max_cardinality: 2
+      agree: [case,number,gender,animacy]
+      gramm: [adj]
     attr:
       optional: true
       max_cardinality: 5
+      agree: [case,number,gender,animacy]
+      gramm: [adj]
+    attr_uniq:
+      orientation: left
+      max_cardinality: 1
+      agree: [case,number,gender,animacy]
+      gramm: [adj]
+    attr_uniq_opt:
+      optional: true
+      orientation: left
+      max_cardinality: 1
+      agree: [case,number,gender,animacy]
+      gramm: [adj]
+    attr_oblig:
+      orientation: left
+      max_cardinality: 1
       agree: [case,number,gender,animacy]
       gramm: [adj]
     genetive:
       optional: true
       orientation: right
       gramm: [noun,gen]
+    genetive_uniq:
+      max_cardinality: 1
+      orientation: right
+      gramm: [noun,gen]
+    genetive_oblig:
+      orientation: right
+      gramm: [noun,gen]
+    indecl_genet:
+      optional: true
+      indecl: true
+      orientation: right
     within:
       optional: true
       gramm: [noun,gen]
@@ -135,12 +167,21 @@ abstract_object:
       optional: true
       gramm: [noun,loc]
       prefix: [в]
+    inside_oblig:
+      gramm: [noun,loc]
+      prefix: [в]      
+    inside_acc:
+      optional: true
+      gramm: [noun,acc]
+      prefix: [в]
+    on_the:
+      optional: true
+      gramm: [noun,loc]
+      prefix: [на]
 
 abstract_named_object:
   extends: abstract_object
   gov:
     name:
       orientation: right
-      gramm: [nom]
-
-abstract_attribute: {}
+      gramm: [noun,nom]

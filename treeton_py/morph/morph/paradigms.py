@@ -3,7 +3,7 @@ import logging
 import itertools
 from marisa_trie import Trie
 
-from .morph_interface import MorphEngine, MorphAnResult
+from .morph_interface import MorphEngine, MorphAnResult, SynthResult
 
 
 @attr.s
@@ -212,16 +212,20 @@ class MorphDictionary(MorphEngine):
     def get_category_for_grammeme(self, grammeme):
         return self.categories_by_grammemes.get(grammeme)
 
-    def synthesise(self, paradigm_id, gramm):
+    def synthesise(self, paradigm_id, gramm_filter):
         paradigm = self.get_paradigm(paradigm_id)
         if not paradigm:
             return None
 
-        return [
-            self.untrie_lex(pe.form)
-            for pe in paradigm.elements
-            if gramm.issubset(self.count_gramm(pe))
-        ]
+        result = []
+        for pe in paradigm.elements:
+            gramm = self.count_gramm(pe)
+            if not gramm_filter.issubset(gramm):
+                continue
+
+            result.append(SynthResult(form=self.untrie_lex(pe.form), gramm=gramm))
+
+        return result
 
     @staticmethod
     def normalize(s):
@@ -244,9 +248,14 @@ class MorphDictionary(MorphEngine):
         else:
             gramm = set(paradigm_element.info.gramm).union(paradigm_element.parent_paradigm.gramm)
 
-        if 'adj' in gramm and 'pos' in gramm and 'inan' not in gramm and 'anim' not in gramm:
-            gramm.add('inan')
-            gramm.add('anim')
+        if 'adj' in gramm and 'pos' in gramm:
+            if 'inan' not in gramm and 'anim' not in gramm:
+                gramm.add('inan')
+                gramm.add('anim')
+            if 'masc' not in gramm and 'fem' not in gramm and 'neut' not in gramm:
+                gramm.add('masc')
+                gramm.add('fem')
+                gramm.add('neut')
 
         return frozenset(gramm)
 
