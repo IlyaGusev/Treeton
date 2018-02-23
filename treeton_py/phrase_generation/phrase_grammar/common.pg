@@ -116,7 +116,9 @@ abstract_action:
     subject:
       gramm: [nom]
     dative_object:
-      gramm: [dat]      
+      gramm: [dat] 
+    instr:     
+      gramm: [ins] 
 
 abstract_entity:
   gov:
@@ -134,6 +136,8 @@ abstract_entity:
 relative_word:
   gov:
     relative_clause:
+      orientation: right
+    relative_clause_agree:
       agree: [number,gender]
       orientation: right
   lex: [который]
@@ -141,7 +145,6 @@ relative_word:
 relative_pro:
   gov:
     relative_clause:
-      agree: [number,gender]
       orientation: right
       prefix: [что]
   gramm: [neut,sing]

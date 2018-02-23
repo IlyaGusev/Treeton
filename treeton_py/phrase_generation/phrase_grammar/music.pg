@@ -352,17 +352,18 @@ favorite_alice_music:
           - root:
               gramm: [nom]
               content: common.relative_word
-            relative_clause: like_passive_clause
+            relative_clause_agree: like_passive_clause
           - root:
               gramm: [acc]
               content: common.relative_word
             relative_clause: like_active_clause
     - root: common.relative_pro
+      relative_clause_agree:
+        reference: id
+        content: like_passive_clause
       relative_clause:
         reference: id
-        content:
-          - like_passive_clause
-          - like_active_clause
+        content: like_active_clause
 
 # чарты и новинки
 
@@ -403,7 +404,21 @@ creation_active_clause:
         - для нового года
         - на новый год
     subject:
+      gramm: [sing]
       lex: [ты]
+
+creation_attr:
+  root:
+    extends: common.abstract_action
+    gramm: ['past','part','pass']
+    lex: [придумать,сгенерировать,создать,сочинить,сгенерить]
+  any_indecl:
+    lex: 
+      - для нового года
+      - на новый год
+  instr:
+    gramm: [sing]
+    lex: [ты]
 
 music_created_by_alice:
   onto:
@@ -420,9 +435,9 @@ music_created_by_alice:
             gramm: [adj]
             lex: [новогодний]
       attr_uniq_opt:
-        lex: [свой, твой]
+        - creation_attr
+        - lex: [свой, твой]
       relative:
-        reference: id
         content:
           root:
             gramm: [acc]
@@ -636,7 +651,6 @@ playlist_mention:
     - playlist_name
 
 all_music:
-  - special_music
   - abstract_music
   - album_mention
   - playlist_mention
@@ -662,10 +676,14 @@ turn_music_on:
         onto:
           target: {}
         content:
-          root: all_launch_verbs
+          root: 
+            gramm: [sing]
+            content: all_launch_verbs
           object:
             reference: target
-            content: all_music
+            content: 
+              - all_music
+              - special_music
 #    - root: common.abstract_clause
 #      oblig_aux: all_music_verbs
 #      aux:
