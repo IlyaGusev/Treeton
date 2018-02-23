@@ -1,11 +1,22 @@
 [
 	{
 	  "target": {
-		"proto": {
-		  "epoch": "the-greatest-hits",
-		  "type": "track"
-		},
-		"type": "collection"
+		"id": "alice",
+		"type": "special_playlist"
+	  },
+	  "type": "switch_on"
+	},
+	{
+	  "target": {
+		"id": "chart",
+		"type": "special_playlist"
+	  },
+	  "type": "switch_on"
+	},
+	{
+	  "target": {
+		"id": "ny_alice_playlist",
+		"type": "special_playlist"
 	  },
 	  "type": "switch_on"
 	}

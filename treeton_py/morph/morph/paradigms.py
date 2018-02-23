@@ -248,7 +248,7 @@ class MorphDictionary(MorphEngine):
         else:
             gramm = set(paradigm_element.info.gramm).union(paradigm_element.parent_paradigm.gramm)
 
-        if 'adj' in gramm and 'pos' in gramm:
+        if ('adj' in gramm and 'pos' in gramm) or 'det' in gramm or 'verb' in gramm:
             if 'inan' not in gramm and 'anim' not in gramm:
                 gramm.add('inan')
                 gramm.add('anim')

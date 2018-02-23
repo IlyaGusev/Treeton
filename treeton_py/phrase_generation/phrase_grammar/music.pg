@@ -304,6 +304,145 @@ activity_area:
       - onto: road-trip
         lex: [путешествие]
 
+# специальные музыкальные сущности
+
+# любимые песни Алисы
+
+like_passive_clause:
+  root: common.finite_clause
+  action:
+    root:
+      extends: common.abstract_action
+      gramm: ['3']
+      lex: [нравиться]
+    dative_object:
+      lex: [ты]  
+
+like_active_clause:
+  root: common.finite_clause
+  action:
+    root:
+      extends: common.abstract_action
+      gramm: ['2','act','sing']
+      lex: [любить,обожать]
+    subject:
+      lex: [ты]
+
+
+favorite_alice_music:
+  onto: 
+    id: alice
+  content:
+    - root:
+        extends: common.abstract_object
+        content:
+          - root: 
+              - abstract_music_keyword
+              - playlist_keyword
+            attr_uniq:
+              gramm: [adj]
+              lex: [любимый]
+          - playlist_keyword
+      attr:
+        reference: id
+        lex: [свой, твой]
+      relative:
+        reference: id
+        content:
+          - root:
+              gramm: [nom]
+              content: common.relative_word
+            relative_clause: like_passive_clause
+          - root:
+              gramm: [acc]
+              content: common.relative_word
+            relative_clause: like_active_clause
+    - root: common.relative_pro
+      relative_clause:
+        reference: id
+        content:
+          - like_passive_clause
+          - like_active_clause
+
+# чарты и новинки
+
+new_music_keyword:
+  extends: common.abstract_object
+  lex: [новинка,чарт,хит]
+
+ya_music_chart:
+  onto:
+    id: chart
+  content:
+    - root:
+        content:
+          - abstract_music_keyword
+      attr:
+        reference: id
+        lex: [популярный,новый,свежий,современный]
+    - root:
+        reference: id
+        content:
+          - new_music_keyword
+          - gramm: [plur]
+            content: new_music_keyword
+      attr_uniq_opt:
+        lex: [популярный,новый,свежий,современный]
+
+# песни алисиного "сочинения"
+
+creation_active_clause:
+  root: common.finite_clause
+  action:
+    root:
+      extends: common.abstract_action
+      gramm: ['fem','act','sing','past']
+      lex: [придумать,сгенерировать,создать,сочинить,сгенерить]
+    any_indecl:
+      lex: 
+        - для нового года
+        - на новый год
+    subject:
+      lex: [ты]
+
+music_created_by_alice:
+  onto:
+    id: ny_alice_playlist
+  reference: id
+  content:
+    - root:
+        extends: common.abstract_object
+        content:
+          root: 
+            - abstract_music_keyword
+            - playlist_keyword
+          attr_uniq_opt:
+            gramm: [adj]
+            lex: [новогодний]
+      attr_uniq_opt:
+        lex: [свой, твой]
+      relative:
+        reference: id
+        content:
+          root:
+            gramm: [acc]
+            content: common.relative_word
+          relative_clause: creation_active_clause
+    - root: common.relative_pro
+      relative_clause: creation_active_clause
+
+special_music:
+  onto:
+    type: special_playlist
+    id: {}
+  tag: special_playlist
+  content:
+    - favorite_alice_music
+    - ya_music_chart
+    - music_created_by_alice
+
+# именованные элементы (треки, альбомы, исполнители, плейлисты)
+
 track_keyword:
   extends: common.abstract_named_object
   lex:
@@ -497,6 +636,7 @@ playlist_mention:
     - playlist_name
 
 all_music:
+  - special_music
   - abstract_music
   - album_mention
   - playlist_mention

@@ -92,6 +92,13 @@ infinitive_clause:
     infinitive:
       gramm: [verb,inf]
 
+finite_clause:
+  extends: abstract_clause
+  gov:
+    action:
+      agree: [number,gender]
+      gramm: [verb,fin]
+
 bracketed:
   punctuation:
 #    left: '"'
@@ -105,7 +112,11 @@ abstract_action:
   gramm: [verb,fin]
   gov:
     object:
-      gramm: [noun,acc]
+      gramm: [acc]
+    subject:
+      gramm: [nom]
+    dative_object:
+      gramm: [dat]      
 
 abstract_entity:
   gov:
@@ -113,6 +124,28 @@ abstract_entity:
       optional: true
       gramm: [noun,gen]
       prefix: [для]
+    relative:
+      optional: true
+      agree: [number,gender,animacy]
+      orientation: right
+
+# потом порефакторить так, чтобы не надо было выписывать комбинации уникальности и опциональности
+
+relative_word:
+  gov:
+    relative_clause:
+      agree: [number,gender]
+      orientation: right
+  lex: [который]
+
+relative_pro:
+  gov:
+    relative_clause:
+      agree: [number,gender]
+      orientation: right
+      prefix: [что]
+  gramm: [neut,sing]
+  lex: [это,то]  
 
 abstract_object:
   extends: abstract_entity
@@ -120,25 +153,21 @@ abstract_object:
   gov:
     attr:
       optional: true
-      max_cardinality: 5
+      max_cardinality: 3
       agree: [case,number,gender,animacy]
-      gramm: [adj]
     attr_uniq:
       orientation: left
       max_cardinality: 1
       agree: [case,number,gender,animacy]
-      gramm: [adj]
     attr_uniq_opt:
       optional: true
       orientation: left
       max_cardinality: 1
       agree: [case,number,gender,animacy]
-      gramm: [adj]
     attr_oblig:
       orientation: left
       max_cardinality: 1
       agree: [case,number,gender,animacy]
-      gramm: [adj]
     any_indecl:
       optional: true
       indecl: true

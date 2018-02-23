@@ -673,8 +673,11 @@ class PhraseGenerator(object):
                     if not morph_an_results:
                         counter = self._detected_unknown_words.get(lex_variant, 0)
                         self._detected_unknown_words[lex_variant] = counter + 1
-                    else:
-                        phrase.morph_an_results += morph_an_results
+                        morph_an_results.append(
+                            SynthResult(form=lex_variant, gramm=None)
+                        )
+
+                    phrase.morph_an_results += morph_an_results
 
     def _inflect(self, phrase):
         categories_to_extract = set()
@@ -707,17 +710,18 @@ class PhraseGenerator(object):
 
             if agree_host.synth_result:
                 extracted_values = {category: None for category in categories_to_extract}
-                for gr in agree_host.synth_result.gramm:
-                    category = self._morph_engine.get_category_for_grammeme(gr)
+                if agree_host.synth_result.gramm:
+                    for gr in agree_host.synth_result.gramm:
+                        category = self._morph_engine.get_category_for_grammeme(gr)
 
-                    if not category or category not in extracted_values:
-                        continue
+                        if not category or category not in extracted_values:
+                            continue
 
-                    old_value = extracted_values.get(category)
-                    if old_value and old_value != gr:
-                        extracted_values.pop(category)
-                    elif not old_value:
-                        extracted_values[category] = gr
+                        old_value = extracted_values.get(category)
+                        if old_value and old_value != gr:
+                            extracted_values.pop(category)
+                        elif not old_value:
+                            extracted_values[category] = gr
 
                 for c in categories_to_extract:
                     if c not in extracted_values:
@@ -740,7 +744,7 @@ class PhraseGenerator(object):
                 synth_variants = []
                 for morph_an_result in phrase.morph_an_results:
                     if isinstance(morph_an_result, SynthResult):
-                        if filter_grammemes.issubset(morph_an_result.gramm):
+                        if morph_an_result.gramm is None or filter_grammemes.issubset(morph_an_result.gramm):
                             synth_variants.append(morph_an_result)
                     else:
                         synth_variants += self._morph_engine.synthesise(
@@ -1148,7 +1152,7 @@ class PhraseGenerator(object):
                 result.onto = self._onto_match(onto, phrase_description.onto, strict=True)
 
             if isinstance(phrase_description, PhraseDescriptionLex):
-                result.lex = deepcopy(phrase_description.lex_variants)
+                result.lex = phrase_description.lex_variants
                 self._calculate_morph_an_results(result)
             elif isinstance(phrase_description, PhraseDescriptionLookup):
                 result.lex = [self._lookup(onto, phrase_description.lookup)]
