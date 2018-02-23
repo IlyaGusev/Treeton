@@ -82,10 +82,14 @@ abstract_music:
           - activity_purpose
           - root:
               extends: common.abstract_named_object
+              gramm: [sing]
               lex: [прослушивание,воспроизведение,проигрывание,игра,звучание]
             inside_oblig: activity_area
-        attr: activity_attr
-        free_attr:
+        attr:
+          - activity_attr
+          - epoch_attr
+        any_indecl: epoch_indecl
+        attr_uniq_opt:
           lex: [хороший, прикольный, нормальный, зачетный, клевый]
         inside_acc:
           gramm: [sing]
@@ -93,30 +97,14 @@ abstract_music:
         inside:
           - root:
               extends: common.abstract_named_object
+              gramm: [sing]
               lex: [жанр, стиль]
             name: genre
           - reference: album
             content: album_mention
           - reference: playlist
             content: playlist_mention
-        indecl_genet:
-          reference: epoch
-          content:
-            gramm: [plur]
-            tag: epoch
-            content:
-              - onto: fifties
-                lex: [80-х,пятидесятых]
-              - onto: sixties
-                lex: [60-х,шестидесятых]
-              - onto: seventies
-                lex: [70-х,семидесятых]
-              - onto: eighties
-                lex: [80-х,восьмидесятых]
-              - onto: nineties
-                lex: [90-х,девяностых]
-              - onto: zeroes
-                lex: [нулевых]
+        indecl_genet: epoch_genet
         genetive:
           reference: artist
           content: artist_mention
@@ -125,6 +113,59 @@ abstract_music:
             content: album_mention
           - reference: playlist
             content: playlist_mention
+
+# эпохи
+
+epoch_indecl:
+  onto:
+    epoch: {}
+  root:
+    tag: epoch
+    reference: epoch
+    content:
+      - onto: the-greatest-hits
+        lex: [на все времена]  
+      - onto: nineties
+        lex: [времен перестройки]
+
+epoch_attr:
+  onto:
+    epoch: {}
+  root:
+    tag: epoch
+    reference: epoch
+    content:
+      - onto: the-greatest-hits
+        lex: [вечный, золотой]  
+      - onto: nineties
+        lex: [перестроечный]
+
+epoch_genet:
+  onto:
+    epoch: {}
+  root:
+    extends: common.abstract_object
+    content:
+      - lex: [годов,годков]
+      - {}
+  any_uniq_indecl:
+    tag: epoch
+    reference: epoch
+    content:
+      - onto: fifties
+        lex: [50-х,пятидесятых]
+      - onto: sixties
+        lex: [60-х,шестидесятых]
+      - onto: seventies
+        lex: [70-х,семидесятых]
+      - onto: eighties
+        lex: [80-х,восьмидесятых]
+      - onto: nineties
+        lex: [90-х,девяностых]
+      - onto: zeroes
+        lex: [нулевых]      
+
+# жанры
 
 genre:
   onto:
@@ -141,6 +182,8 @@ genre:
         lex: [джаз]
       - onto: blues
         lex: [блюз]
+
+# активности
 
 heavy_transport:
   lex:
@@ -178,7 +221,7 @@ activity_attr:
       - onto: party
         lex: [праздничный]
       - onto: sex
-        lex: [сексуальный,эротичный,порно,пронографичный,порнографический,взрослый]
+        lex: [сексуальный,эротичный,порно,порнографичный,порнографический,взрослый]
       - onto: road-trip
         lex: [дорожный,прогулочный]
 
@@ -194,7 +237,7 @@ activity_purpose:
           - onto: wake-up
             lex: [пробуждение, бессоница]
           - onto: driving
-            lex:
+            content:
               # автомобиль (в контекстах "музыка для автомобиля")
               - transport
               # просто вождение/езда
@@ -202,22 +245,26 @@ activity_purpose:
               # вождение машины
               - root:
                   extends: common.abstract_object
-                  lex: вождение
+                  gramm: [sing]
+                  lex: [вождение]
                 genetive_uniq: transport
               # автомобильная езда
               - root:
                   extends: common.abstract_object
-                  lex: езда
+                  gramm: [sing]
+                  lex: [езда]
                 attr_uniq:
                   lex: [автомобильный]
               # езда на мотоцикле
               - root:
                   extends: common.abstract_object
+                  gramm: [sing]
                   lex: [езда,перемещение]
                 on_the: transport
               # вождение скутера
               - root:
                   extends: common.abstract_object
+                  gramm: [sing]
                   lex: [вождение,езда]
                 inside: transport
           - onto: fall-asleep
@@ -237,8 +284,8 @@ activity_purpose:
       - onto: party
         lex: [вечеринка,тусовка,пати]
       - onto: beloved
-        lex:
-          - свидание
+        content:
+          - lex: свидание
           - root:
               extends: common.abstract_object
               lex: [встреча,свидание]
@@ -275,6 +322,13 @@ track_name:
   onto:
     type: track
     name: {}
+  tag: track
+  lookup: name
+
+track_indecl_name:
+  onto:
+    type: track
+    name: {}
   content:
     root:
       extends: common.bracketed
@@ -288,8 +342,10 @@ track_mention:
     name: {}
   content:
     - track_name
-    - root: track_keyword
-      name: track_name
+    - root: 
+        gramm: [sing]
+        content: track_keyword
+      name: track_indecl_name
       genetive: 
         reference: artist
         content: artist_mention
@@ -306,8 +362,10 @@ track_mention:
     - root:
         extends: common.conj
         content:
-          - root: track_keyword
-            name: track_name
+          - root: 
+              gramm: [sing]
+              content: track_keyword
+            name: track_indecl_name
           - track_name
       conjunct:
         - reference: artist
@@ -319,12 +377,13 @@ track_mention:
 
 album_keyword:
   extends: common.abstract_named_object
+  gramm: [sing]
   lex:
     - альбом
     - пластинка
     - диск
 
-album_name:
+album_indecl_name:
   onto:
     type: album
     name: {}
@@ -339,13 +398,11 @@ album_mention:
   onto:
     type: album
     name: {}
-  content:
-    - album_name    
-    - root: album_keyword
-      name: album_name
-      genetive: 
-        reference: artist
-        content: artist_mention
+  root: album_keyword
+  name: album_indecl_name
+  genetive: 
+    reference: artist
+    content: artist_mention
 #    - root:
 #        extends: common.conj
 #        content:
@@ -358,6 +415,7 @@ album_mention:
 
 artist_keyword:
   extends: common.abstract_named_object
+  gramm: [sing]
   content:
     - lex:
       - группа
@@ -371,11 +429,19 @@ artist_keyword:
       - ансамбль
     - root:
         extends: common.abstract_object
+        gramm: [sing]
         lex: коллектив
       attr_oblig:
         lex: музыкальный
 
 artist_name:
+  onto:
+    type: artist
+    name: {}
+  tag: artist
+  lookup: name
+
+artist_indecl_name:
   onto:
     type: artist
     name: {}
@@ -392,11 +458,12 @@ artist_mention:
     name: {}
   content:
     - root: artist_keyword
-      name: artist_name
+      name: artist_indecl_name
     - artist_name
 
 playlist_keyword:
   extends: common.abstract_named_object
+  gramm: [sing]
   content:
     - lex:
       - плейлист
@@ -404,6 +471,7 @@ playlist_keyword:
       - треклист
     - root:
         extends: common.abstract_object
+        gramm: [sing]
         lex: [список, набор]
       genetive_oblig:
         gramm: [plur]
@@ -424,10 +492,8 @@ playlist_mention:
   onto:
     type: playlist
     name: {}
-  content:
-    - root: playlist_keyword
-      name:
-        - playlist_name
+  root: playlist_keyword
+  name:
     - playlist_name
 
 all_music:

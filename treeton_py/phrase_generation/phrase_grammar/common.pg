@@ -70,7 +70,7 @@ conj:
   gov:
     conjunct:
       max_cardinality: 5
-      agree: [case,number,animacy]
+      agree: [case,number]
 
 abstract_clause:
   gov:
@@ -116,13 +116,8 @@ abstract_entity:
 
 abstract_object:
   extends: abstract_entity
-  gramm: [noun,nom,sing]
+  gramm: [noun,nom]
   gov:
-    free_attr:
-      optional: true
-      max_cardinality: 2
-      agree: [case,number,gender,animacy]
-      gramm: [adj]
     attr:
       optional: true
       max_cardinality: 5
@@ -144,6 +139,12 @@ abstract_object:
       max_cardinality: 1
       agree: [case,number,gender,animacy]
       gramm: [adj]
+    any_indecl:
+      optional: true
+      indecl: true
+    any_uniq_indecl:
+      indecl: true
+      max_cardinality: 1
     genetive:
       optional: true
       orientation: right

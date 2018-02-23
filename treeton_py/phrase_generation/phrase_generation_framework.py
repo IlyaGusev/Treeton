@@ -551,11 +551,12 @@ class Phrase(object):
 
 
 class PhraseGenerator(object):
-    def __init__(self, grammar, morph_engine):
+    def __init__(self, grammar, morph_engine, external_morph_info=None):
         self._grammar = grammar
         assert self._grammar.is_loaded(), 'Phrase generator can not be built over the uninitialized grammar'
         self._morph_engine = morph_engine
-        self._detected_unknown_words = set()
+        self._external_morph_info = external_morph_info
+        self._detected_unknown_words = {}
         self._choosing_memory = {}
         self._phrase_usage_stats = {
             ph.name: 0
@@ -566,7 +567,7 @@ class PhraseGenerator(object):
         }
 
     def get_detected_unknown_words(self):
-        return list(self._detected_unknown_words)
+        return sorted(self._detected_unknown_words.items(), key=lambda x: x[1])
 
     def get_phrase_usage_statistics(self):
         return sorted(self._phrase_usage_stats.items(), key=lambda x: (-x[1], x[0]))
@@ -659,9 +660,21 @@ class PhraseGenerator(object):
             if phrase.lex:
                 for lex_variant in phrase.lex:
                     morph_an_results = self._morph_engine.analyse(lex_variant)
+
+                    if self._external_morph_info:
+                        external_morph_variants = self._external_morph_info.get(lex_variant)
+
+                        if external_morph_variants:
+                            for ext_variant in external_morph_variants:
+                                morph_an_results.append(
+                                    SynthResult(form=ext_variant[0], gramm=frozenset(ext_variant[1]))
+                                )
+
                     if not morph_an_results:
-                        self._detected_unknown_words.add(lex_variant)
-                    phrase.morph_an_results += morph_an_results
+                        counter = self._detected_unknown_words.get(lex_variant, 0)
+                        self._detected_unknown_words[lex_variant] = counter + 1
+                    else:
+                        phrase.morph_an_results += morph_an_results
 
     def _inflect(self, phrase):
         categories_to_extract = set()
@@ -723,12 +736,17 @@ class PhraseGenerator(object):
 
         if phrase.lex:
             if phrase.grammemes is not None and phrase.morph_an_results:
+                filter_grammemes = phrase.grammemes or set()
                 synth_variants = []
                 for morph_an_result in phrase.morph_an_results:
-                    synth_variants += self._morph_engine.synthesise(
-                        morph_an_result.paradigm_id,
-                        phrase.grammemes or set()
-                    )
+                    if isinstance(morph_an_result, SynthResult):
+                        if filter_grammemes.issubset(morph_an_result.gramm):
+                            synth_variants.append(morph_an_result)
+                    else:
+                        synth_variants += self._morph_engine.synthesise(
+                            morph_an_result.paradigm_id,
+                            filter_grammemes
+                        )
 
                 if synth_variants:
                     phrase.synth_result = random.choice(synth_variants)
@@ -737,8 +755,8 @@ class PhraseGenerator(object):
                         phrase.lex,
                         phrase.grammemes
                     ))
-                    return False
-            else:
+
+            if not phrase.synth_result:
                 phrase.synth_result = SynthResult(form=random.choice(phrase.lex), gramm=frozenset())
 
         if phrase.root:

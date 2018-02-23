@@ -178,12 +178,23 @@ class Generator:
         self._morph_dict = paradigms_parser.load_dict_from_directory(morph_path, light_weight=True)
 
     def generate(self, phrase_grammar_path, config_path, out_path, top_path, shortest_top_size):
-        phrase_generator = PhraseGenerator(PhraseGrammar(phrase_grammar_path, self._morph_dict), self._morph_dict)
-
-        shortest_toplist = []
-
         config_file = open(config_path)
         config = json.load(config_file)
+
+        external_morph_info_path = config.get('external_morph_info_path')
+
+        if external_morph_info_path:
+            external_morph_info_path = os.path.join(os.path.dirname(config_path), external_morph_info_path)
+            external_morph_info = json.load(open(external_morph_info_path))
+        else:
+            external_morph_info = None
+
+        phrase_generator = PhraseGenerator(
+            PhraseGrammar(phrase_grammar_path, self._morph_dict),
+            self._morph_dict, external_morph_info=external_morph_info
+        )
+
+        shortest_toplist = []
 
         def context_generator():
             for form in config['form']:
