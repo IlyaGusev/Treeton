@@ -1,0 +1,2 @@
+morph/data/.bin_morph filter=lfs diff=lfs merge=lfs -text
+morph/data/ filter=lfs diff=lfs merge=lfs -text
