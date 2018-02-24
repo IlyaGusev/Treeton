@@ -118,7 +118,17 @@ abstract_action:
     dative_object:
       gramm: [dat] 
     instr:     
-      gramm: [ins] 
+      gramm: [ins]
+    circ:
+      optional: true
+    circ_indecl:
+      optional: true
+      indecl: true
+    conj_right:
+      optional: true
+      orientation: right
+      agree: [mood,verbform,number]
+      prefix: [и]
 
 abstract_entity:
   gov:
@@ -130,6 +140,11 @@ abstract_entity:
       optional: true
       agree: [number,gender,animacy]
       orientation: right
+    proclitic:
+      indecl: true
+      optional: true
+      max_cardinality: 1
+      orientation: left
 
 # потом порефакторить так, чтобы не надо было выписывать комбинации уникальности и опциональности
 
@@ -150,9 +165,21 @@ relative_pro:
   gramm: [neut,sing]
   lex: [это,то]  
 
+what_word:
+  root:
+    gramm: [sing,neut]
+    lex: [что]
+    gov:
+      any_indecl:
+        indecl: true
+        orientation: right
+        prefix: ['-']
+  any_indecl:
+    lex: [то,нибудь,либо]
+
 abstract_object:
   extends: abstract_entity
-  gramm: [noun,nom]
+  gramm: [nom]
   gov:
     attr:
       optional: true
@@ -180,36 +207,40 @@ abstract_object:
     genetive:
       optional: true
       orientation: right
-      gramm: [noun,gen]
+      gramm: [gen]
     genetive_uniq:
       max_cardinality: 1
       orientation: right
-      gramm: [noun,gen]
+      gramm: [gen]
     genetive_oblig:
       orientation: right
-      gramm: [noun,gen]
+      gramm: [gen]
     indecl_genet:
       optional: true
       indecl: true
       orientation: right
     within:
       optional: true
-      gramm: [noun,gen]
+      gramm: [gen]
       prefix: [из,с]
+    with:
+      optional: true
+      gramm: [ins]
+      prefix: [с]
     inside:
       optional: true
-      gramm: [noun,loc]
+      gramm: [loc]
       prefix: [в]
     inside_oblig:
-      gramm: [noun,loc]
+      gramm: [loc]
       prefix: [в]      
     inside_acc:
       optional: true
-      gramm: [noun,acc]
+      gramm: [acc]
       prefix: [в]
     on_the:
       optional: true
-      gramm: [noun,loc]
+      gramm: [loc]
       prefix: [на]
 
 abstract_named_object:
@@ -217,4 +248,4 @@ abstract_named_object:
   gov:
     name:
       orientation: right
-      gramm: [noun,nom]
+      gramm: [nom]

@@ -1,23 +1,24 @@
 [
 	{
 	  "target": {
-		"id": "alice",
-		"type": "special_playlist"
+		"proto": {
+          "language": "russian",
+          "type": "track"
+        },
+		"type": "collection"
 	  },
+      "shuffle": true,
 	  "type": "switch_on"
 	},
-	{
+    {
 	  "target": {
-		"id": "chart",
-		"type": "special_playlist"
+		"proto": {
+          "language": "foreign",
+          "type": "track"
+        },
+		"type": "collection"
 	  },
-	  "type": "switch_on"
-	},
-	{
-	  "target": {
-		"id": "ny_alice_playlist",
-		"type": "special_playlist"
-	  },
+      "repeat": true,
 	  "type": "switch_on"
 	}
 ]

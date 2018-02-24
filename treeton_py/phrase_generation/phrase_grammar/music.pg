@@ -2,6 +2,7 @@
 
 music_action:
   extends: common.abstract_action
+  tag: action_request
 
 launch_imperf:
   extends: music_action
@@ -62,6 +63,7 @@ abstract_music_keyword:
         - музяка
         - музло
         - песня
+    - common.what_word
     - gramm: [plur]
       lex: [песня]
 
@@ -80,6 +82,7 @@ abstract_music:
           - genre
         purpose:
           - activity_purpose
+          - mood_purpose
           - root:
               extends: common.abstract_named_object
               gramm: [sing]
@@ -88,9 +91,13 @@ abstract_music:
         attr:
           - activity_attr
           - epoch_attr
+          - language_attr
+          - mood_attr
+        on_the:
+          - language_language
+        with:
+          - language_words
         any_indecl: epoch_indecl
-        attr_uniq_opt:
-          lex: [хороший, прикольный, нормальный, зачетный, клевый]
         inside_acc:
           gramm: [sing]
           content: activity_area
@@ -113,6 +120,50 @@ abstract_music:
             content: album_mention
           - reference: playlist
             content: playlist_mention
+
+# языки
+
+language_attr:
+  onto:
+    language: {}
+  root:
+    tag: language
+    reference: language
+    content:
+      - onto: russian
+        lex: [родной,отечественный,русский,русскоязычный,наш]  
+      - onto: foreign
+        lex: [иностранный,западный]
+      - onto: foreign
+        root:
+          extends: common.abstract_entity
+          lex: [родной,русский,славянский,русскоязычный,наш]
+        proclitic:
+          lex: [не]
+
+
+language_words:
+  onto:
+    language: {}
+  root:
+    extends: common.abstract_object
+    content:
+      - lex: [текст]
+      - gramm: [plur]
+        lex: [слово]  
+      - gramm: [sing,fem]
+        lex: [лирика]
+  attr_uniq: language_attr
+
+language_language:
+  onto:
+    language: {}
+  root:
+    extends: common.abstract_object
+    gramm: [sing]
+    lex: [язык]  
+  attr_uniq: language_attr
+
 
 # эпохи
 
@@ -153,15 +204,15 @@ epoch_genet:
     reference: epoch
     content:
       - onto: fifties
-        lex: [50-х,пятидесятых]
+        lex: [50-х,пятидесятых,'50']
       - onto: sixties
-        lex: [60-х,шестидесятых]
+        lex: [60-х,шестидесятых,'60']
       - onto: seventies
-        lex: [70-х,семидесятых]
+        lex: [70-х,семидесятых,'70']
       - onto: eighties
-        lex: [80-х,восьмидесятых]
+        lex: [80-х,восьмидесятых,'80']
       - onto: nineties
-        lex: [90-х,девяностых]
+        lex: [90-х,девяностых,'90']
       - onto: zeroes
         lex: [нулевых]      
 
@@ -304,6 +355,128 @@ activity_area:
       - onto: road-trip
         lex: [путешествие]
 
+# настроение
+
+mood_attr:
+  onto:
+    mood: {}
+  root:
+    tag: mood
+    reference: mood
+    content:
+      - onto: aggressive
+        lex: [агрессивный]
+      - onto: spring
+        lex: [весенний]
+      - onto: sad
+        lex: 
+          - печальный
+          - душевный
+          - лирический
+          - задушевный
+      - onto: sad
+        root: 
+          extends: common.abstract_action
+          lex: [грустный]
+        proclitic:
+          lex: [очень]
+      - onto: rainy
+        lex: [дождливый,мокрый]
+      - onto: healing
+        lex:
+          - жаропонижающий
+          - исцеляющий
+          - излечивающий
+          - лечебный
+          - лечащий
+          - оздоровительный
+          - оздаравливающий
+      - onto: winter
+        lex: [зимний,ледяной,холодный,снежный]
+      - onto: beautiful
+        lex: [красивый,милый,симпатичный,няшный]
+      - onto: cool
+        root: 
+          extends: common.abstract_object
+          lex: [крутой,реальный]
+        attr_uniq_opt: [самый]
+      - onto: summer
+        lex: [летний,теплый,жаркий]
+      - onto: dream
+        lex: [мечтательный,возвышенный]
+      - onto: haunting
+        lex: [мистический,таинственный]
+      - onto: dark
+        lex:
+          - мрачный
+          - запретный
+          - злой
+          - страшный
+          - нагнетающий
+          - напряженный
+          - тревожный
+      - onto: newyear
+        lex: [новогодний]
+      - onto: autumn
+        lex: [осенний]
+      - onto: happy
+        lex: [радостный,веселый,счастливый]
+      - onto: happy
+        root: 
+          extends: common.abstract_action
+          lex: [грустный]
+        proclitic:
+          lex: [не,'совсем не']
+      - onto: relaxed
+        lex:
+          - расслабленный
+          - спокойный
+          - успокаивающий
+          - успокоительный
+          - медленный
+          - релакс
+          - плавный
+          - расслабляющий
+          - ночной
+          - спокойный
+      - onto: sentimental
+        lex: [сентиментальный,трогательный]
+      - onto: energetic
+        lex:
+          - энергичный
+          - зажигательный
+          - горячий
+          - громкий
+          - быстрый
+      - onto: epic
+        lex: [эпичный,оригинальный,необычный]
+
+mood_purpose:
+  onto:
+    mood: {}
+  root:
+    tag: mood
+    reference: mood
+    content:
+      - gramm: [sing]
+        content:
+          - onto: sad
+            lex: [душа, печаль]
+          - onto: happy
+            lex: [настроение,счастье,радость,веселье]
+          - onto: relaxed
+            lex: [релакс,расслабление,отдых]
+          - onto: cool
+            root:
+              extends: common.abstract_object
+              lex: [пацан,чувак,парень]
+            attr:
+              lex: [реальный, крутой]
+          - onto: autumn
+            lex: [осень,листопад]
+          - onto: winter
+            lex: [зима,снег]
+
 # специальные музыкальные сущности
 
 # любимые песни Алисы
@@ -376,11 +549,14 @@ ya_music_chart:
     id: chart
   content:
     - root:
-        content:
-          - abstract_music_keyword
+        content: abstract_music_keyword
       attr:
         reference: id
-        lex: [популярный,новый,свежий,современный]
+        lex: [популярный,новый,свежий,современный,трендовый,модный,молодежный,лучший]
+    - root:
+        content: abstract_music_keyword
+      any_indecl:
+        lex: [посвежее,поновее,посовременнее,помоднее]
     - root:
         reference: id
         content:
@@ -388,7 +564,7 @@ ya_music_chart:
           - gramm: [plur]
             content: new_music_keyword
       attr_uniq_opt:
-        lex: [популярный,новый,свежий,современный]
+        lex: [популярный,новый,свежий,современный,трендовый,модный,молодежный,лучший]
 
 # песни алисиного "сочинения"
 
@@ -657,6 +833,60 @@ all_music:
   - artist_mention
   - track_mention
 
+# на повторе/шафл
+
+shuffle_phrase:
+  onto:
+    shuffle: true
+  tag: shuffle
+  root:
+    reference: shuffle
+    lex: 
+        - вперемешку
+        - в произвольном порядке
+        - шафл
+        - рандомно
+        - на рандоме
+        - в рандомном порядке
+        - в рандоме
+        - в любом порядке
+        - в смешанном порядке
+
+shuffle_action:
+  onto:
+    shuffle: true
+  tag: shuffle
+  root:
+    reference: shuffle
+    lex: 
+        - перемешать
+        - замешать
+        - смешать
+
+repeat_phrase:
+  onto:
+    repeat: true
+  tag: repeat
+  root:
+    reference: repeat
+    lex: 
+      - на повторе
+      - на повтор
+      - на репите
+      - циклом
+      - в цикле
+      - по кругу
+
+repeat_action:
+  onto:
+    repeat: true
+  tag: repeat
+  root:
+    reference: repeat
+    lex: [закольцевать]
+
+# основной интент включения музыки
+
 turn_music_on:
   onto:
     type: switch_on
@@ -671,6 +901,12 @@ turn_music_on:
           object:
             reference: target
             content: all_music
+          circ_indecl:
+            - shuffle_phrase
+            - repeat_phrase
+          conj_right:
+            - shuffle_action
+            - repeat_action
     - root: common.imperative_clause
       imperative:
         onto:
@@ -684,8 +920,131 @@ turn_music_on:
             content: 
               - all_music
               - special_music
+          circ_indecl:
+            - shuffle_phrase
+            - repeat_phrase
+          conj_right:
+            - shuffle_action
+            - repeat_action
 #    - root: common.abstract_clause
 #      oblig_aux: all_music_verbs
 #      aux:
 #        reference: target
 #        content: all_music
+
+
+# больше/меньше
+
+more_music:
+  onto:
+    type: more
+    target: {}
+  root:
+    extends: common.abstract_object
+    tag: modifier
+    root:
+      extends: common.abstract_object
+    any_uniq_indecl: 
+      lex: [больше,побольше]
+  genetive_uniq:
+    reference: target
+    content: 
+      - abstract_music
+      - artist_mention
+
+less_music:
+  onto:
+    type: less
+    target: {}
+  root:
+    extends: common.abstract_object
+    tag: modifier
+    root:
+      extends: common.abstract_object
+    any_uniq_indecl: 
+      lex: [меньше,поменьше]
+  genetive_uniq: 
+    reference: target
+    content: 
+      - abstract_music
+      - artist_mention
+
+more_less_preambula:
+  extends: [common.abstract_action]
+  root:
+    extends: [common.abstract_object]
+  any_uniq_indecl:
+    lex: 
+      - сделай
+      - пусть будет
+      - теперь
+
+music_fraction:
+  root:
+    extends: common.abstract_object
+    lex: [доля,процент]
+  genetive_uniq:
+    - abstract_music
+    - artist_mention
+
+switch_on_more_music:
+  onto:
+    type: more
+    target: {}
+  content:
+    - root: common.infinitive_clause
+      infinitive:
+        - root: all_music_verbs
+          object: more_music
+        - root:
+            extends: common.abstract_action
+            tag: modifier
+            lex: [увеличить,поднять]
+          object: music_fraction
+    - root: common.imperative_clause
+      imperative:
+        - root:
+            extends: common.abstract_action
+            tag: modifier
+            lex: [увеличить,увеличивать,поднять,поднимать]
+          object: music_fraction
+        - root: 
+            gramm: [sing]
+            content: all_launch_verbs
+          object: more_music
+    - root: more_less_preambula
+      object: more_music
+
+switch_on_less_music:
+  onto:
+    type: less
+    target: {}
+  content:
+    - root: common.infinitive_clause
+      infinitive:
+        - root: all_music_verbs
+          object: less_music
+        - root:
+            extends: common.abstract_action
+            tag: modifier
+            lex: [уменьшить,снизить,понизить]
+          object: music_fraction
+    - root: common.imperative_clause
+      imperative:
+        - root:
+            extends: common.abstract_action
+            tag: modifier
+            lex: [уменьшить,уменьшать,снизить,снижать,понизить,понижать]
+          object: music_fraction
+        - root: 
+            gramm: [sing]
+            content: all_launch_verbs
+          object: less_music
+    - root: more_less_preambula
+      object: less_music
+
+
+# шумовые слова
+
+#         attr_uniq_opt:
+#          lex: [хороший, прикольный, нормальный, зачетный, клевый]
