@@ -2,7 +2,6 @@
 
 music_action:
   extends: common.abstract_action
-  tag: action_request
 
 launch_imperf:
   extends: music_action
@@ -33,6 +32,7 @@ listen_perf:
   lex:
     - услышать
     - прослушать
+    - послушать
 
 listen_imperf:
   extends: music_action
@@ -41,15 +41,44 @@ listen_imperf:
     - прослушивать
     - слышать
 
+all_autoplay_launch_verbs:
+  tag: action_request
+  content:
+    - launch_perf
+    - launch_imperf
+
+all_autoplay_listen_verbs:
+  tag: action_request
+  content:
+    - listen_perf
+    - listen_imperf
+
+all_autoplay_verbs:
+  - all_autoplay_launch_verbs
+  - all_autoplay_listen_verbs
+
+non_autoplay_verbs:
+  extends: music_action
+  content:
+    - root:
+        extends: common.abstract_action
+        lex: скачать
+      conj_right: all_autoplay_listen_verbs
+    - lex:
+      - скачать
+      - найти
+      - открыть
+      - дать
+      - показать
+
 all_launch_verbs:
-  - launch_perf
-  - launch_imperf
+  - all_autoplay_launch_verbs
+  - non_autoplay_verbs
 
 all_music_verbs:
-  - launch_perf
-  - launch_imperf
-  - listen_perf
-  - listen_imperf
+  - all_autoplay_verbs
+  - non_autoplay_verbs
+
 
 # music objects
 
@@ -121,7 +150,7 @@ abstract_music:
                       lex: [музыка,песня]
                     - gramm: [plur]
                       lex: [песня]
-                attr: genre_attr
+                attr_uniq: genre_attr
           - reference: album
             content: album_mention
           - reference: playlist
@@ -1570,6 +1599,7 @@ track_keyword:
     - произведение
 
 track_name:
+  extends: common.abstract_object
   onto:
     type: track
     name: {}
@@ -1611,7 +1641,6 @@ track_mention:
         - reference: playlist
           content: playlist_mention
     - root:
-        extends: common.conj
         content:
           - root: 
               gramm: [sing]
@@ -1649,20 +1678,18 @@ album_mention:
   onto:
     type: album
     name: {}
-  root: album_keyword
-  name: album_indecl_name
-  genetive: 
-    reference: artist
-    content: artist_mention
-#    - root:
-#        extends: common.conj
-#        content:
-#          - root: album_keyword
-#            name: album_name
-#          - album_name
-#      conjunct:
-#        reference: artist
-#        content: artist_mention
+  content:
+    - root: album_keyword
+      name: album_indecl_name
+      genetive: 
+        reference: artist
+        content: artist_mention
+    - root:
+        root: album_keyword
+        name: album_indecl_name
+      conjunct:
+        reference: artist
+        content: artist_mention
 
 artist_keyword:
   extends: common.abstract_named_object
@@ -1757,8 +1784,6 @@ all_music:
 # на повторе/шафл
 
 shuffle_phrase:
-  onto:
-    shuffle: true
   tag: shuffle
   root:
     reference: shuffle
@@ -1774,19 +1799,15 @@ shuffle_phrase:
         - в смешанном порядке
 
 shuffle_action:
-  onto:
-    shuffle: true
   tag: shuffle
   root:
     reference: shuffle
     lex: 
-        - перемешать
-        - замешать
-        - смешать
+      - перемешать
+      - замешать
+      - смешать
 
 repeat_phrase:
-  onto:
-    repeat: true
   tag: repeat
   root:
     reference: repeat
@@ -1799,14 +1820,44 @@ repeat_phrase:
       - по кругу
 
 repeat_action:
-  onto:
-    repeat: true
   tag: repeat
   root:
     reference: repeat
     lex: [закольцевать]
 
 # основной интент включения музыки
+
+fuzzy_phrase:
+  lex:
+    - бесплатно
+    - 'без смс'
+    - 'без регистрации'
+    - mp3
+    - мп3
+    - 'мп 3'        
+    - онлайн
+    - 'Яндекс Музыка'
+    - Яндекс.Музыка
+    - 'на Яндекс Музыке'
+    - 'на телефон'
+    - пожалуйста
+    - 'в хорошем качестве'
+    - плиз
+    - прошу
+    - очень прошу
+    - будьте добры
+    - будь добра
+
+let_it_play:
+  extends: common.abstract_action
+  root:
+    extends: common.abstract_object
+  any_uniq_indecl:
+    lex: 
+      - пусть играет
+      - пусть звучит
+      - пусть заиграет
+      - пусть зазвучит
 
 turn_music_on:
   onto:
@@ -1818,16 +1869,26 @@ turn_music_on:
         onto:
           target: {}
         content:
-          root: all_music_verbs
+          root: 
+            - all_music_verbs
+            - root: 
+                - all_autoplay_listen_verbs
+                - extends: common.abstract_action
+                  lex: [найти, скачать]
+              proclitic_oblig:
+                lex: [хочу,'я хочу','мне надо']
+            - let_it_play
           object:
             reference: target
             content: all_music
           circ_indecl:
             - shuffle_phrase
             - repeat_phrase
+            - fuzzy_phrase
           conj_right:
             - shuffle_action
             - repeat_action
+            - lex: [скачать]
     - root: common.imperative_clause
       imperative:
         onto:
@@ -1844,14 +1905,19 @@ turn_music_on:
           circ_indecl:
             - shuffle_phrase
             - repeat_phrase
+            - fuzzy_phrase
           conj_right:
             - shuffle_action
             - repeat_action
-#    - root: common.abstract_clause
-#      oblig_aux: all_music_verbs
-#      aux:
-#        reference: target
-#        content: all_music
+            - lex: [скачать]
+    - root: common.abstract_clause
+      oblig_aux: all_music_verbs
+      aux:
+        - reference: target
+          content: all_music
+        - fuzzy_phrase
+    - root: 
+        extends: common.abstract_action
 
 
 # больше/меньше
@@ -1898,6 +1964,7 @@ more_less_preambula:
     lex: 
       - сделай
       - пусть будет
+      - пусть играет
       - теперь
 
 music_fraction:
@@ -1965,7 +2032,3 @@ switch_on_less_music:
       object: less_music
 
 
-# шумовые слова
-
-#         attr_uniq_opt:
-#          lex: [хороший, прикольный, нормальный, зачетный, клевый, офигенный]

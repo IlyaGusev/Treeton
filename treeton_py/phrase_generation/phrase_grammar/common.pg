@@ -66,12 +66,6 @@
 # только такие конструкции, в которых каждый из ключей контекста используется (с помощью операции lookup)
 # ровно один раз.
 
-conj:
-  gov:
-    conjunct:
-      max_cardinality: 5
-      agree: [case,number]
-
 abstract_clause:
   gov:
     oblig_aux:
@@ -248,6 +242,10 @@ abstract_object:
       optional: true
       gramm: [loc]
       prefix: [на]
+    conjunct:
+      max_cardinality: 5
+      orientation: right
+      agree: [case,number]
 
 abstract_named_object:
   extends: abstract_object

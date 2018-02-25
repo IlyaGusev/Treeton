@@ -595,10 +595,22 @@ class PhraseGenerator(object):
                 fail_count += 1
                 continue
 
+            # logger.info("Correct phrase found, checking references")
+
             current_possible_references = set()
             self._collect_possible_references(matched_onto, [], current_possible_references)
 
-            if all_possible_references != current_possible_references or not self._inflect(phrase):
+            if all_possible_references != current_possible_references:
+                # logger.info(
+                #     'references doesn\'t match, current reference set is %s, structure is %s' %
+                #     (current_possible_references, phrase)
+                # )
+                fail_count += 1
+                continue
+
+            # logger.info("References ok, trying to inflect")
+
+            if not self._inflect(phrase):
                 fail_count += 1
                 continue
 
@@ -607,6 +619,8 @@ class PhraseGenerator(object):
             limit -= 1
 
             self._update_usage_stats(phrase)
+            # logger.info("Successfully inflected, yielding")
+
             yield phrase
 
         yield None

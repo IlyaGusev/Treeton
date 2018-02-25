@@ -1,12 +1,14 @@
 [
-	{
-	  "target": {
-		"proto": {
-          "genre": "forchildren",
-          "type": "track"
-        },
-		"type": "collection"
-	  },
-	  "type": "switch_on"
-	}
+  {
+    "repeat": "true",
+    "target": {
+      "name": "How Low",
+      "playlist": {
+        "name": "ludacris",
+        "type": "playlist"
+      },
+      "type": "track"
+    },
+    "type": "switch_on"
+  }
 ]
