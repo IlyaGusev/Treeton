@@ -2,23 +2,11 @@
 	{
 	  "target": {
 		"proto": {
-          "language": "russian",
+          "genre": "forchildren",
           "type": "track"
         },
 		"type": "collection"
 	  },
-      "shuffle": true,
-	  "type": "switch_on"
-	},
-    {
-	  "target": {
-		"proto": {
-          "language": "foreign",
-          "type": "track"
-        },
-		"type": "collection"
-	  },
-      "repeat": true,
 	  "type": "switch_on"
 	}
 ]
