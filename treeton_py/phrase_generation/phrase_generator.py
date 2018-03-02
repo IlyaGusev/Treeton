@@ -173,11 +173,15 @@ def prepare_form(form, config_path, sampling_memory):
 
 
 class Generator:
-    def __init__(self, morph_path):
+    def __init__(self, morph_path, morph_hints_path=None):
         paradigms_parser = ParadigmsParser()
-        self._morph_dict = paradigms_parser.load_dict_from_directory(morph_path, light_weight=True)
+        self._morph_dict = paradigms_parser.load_dict_from_directory(
+            morph_path, light_weight=True
+        )
+        if morph_hints_path:
+            self._morph_dict.load_morph_hints(morph_hints_path)
 
-    def generate(self, phrase_grammar_path, config_path, out_path, top_path, shortest_top_size):
+    def generate(self, phrase_grammar_path, config_path, out_path, json_out_path, top_path, shortest_top_size):
         config_file = open(config_path)
         config = json.load(config_file)
 
@@ -202,6 +206,7 @@ class Generator:
                     yield (form, config.get('phrase_ids'))
 
         unique_phrases = set()
+        unique_phrases_no_tags = {}
         sampling_memory = SamplingMemory()
 
         n_tries = 0
@@ -227,15 +232,18 @@ class Generator:
                         failed_forms.add(form_string)
                         continue
 
-                    phrase = phrase_generator.render_string(structured_phrase)
+                    phrase, phrase_no_tags = phrase_generator.render_strings(structured_phrase)
 
                     if phrase in unique_phrases:
                         if n_tries > 100:
                             break
+
+                        unique_phrases_no_tags[phrase_no_tags][form_string] = prepared_form
                         n_tries += 1
                         continue
                     n_tries = 0
                     unique_phrases.add(phrase)
+                    unique_phrases_no_tags[phrase_no_tags] = {form_string: prepared_form}
                     shortest_toplist.append(
                         (prepared_form, phrase, str(structured_phrase), str(structured_phrase.reference_set))
                     )
@@ -267,6 +275,20 @@ class Generator:
                 f_out.write(phrase)
                 f_out.write('\n')
 
+        if json_out_path:
+            target_json = []
+            for phrase, forms in unique_phrases_no_tags.items():
+                for _, form in forms.items():
+                    target_json.append({
+                        "phrase": phrase,
+                        "form": form
+                    })
+
+            target_json.sort(key=lambda d: d['phrase'])
+
+            with codecs.open(json_out_path, mode='w', encoding='utf-8') as fout:
+                json.dump(target_json, fout, indent=2, ensure_ascii=False)
+
         logger.info('%d phrases were stored to %s' % (len(shortest_toplist), out_path))
         if shortest_toplist:
             debug_output = '============================\n'
@@ -297,6 +319,9 @@ if __name__ == "__main__":
     parser.add_argument('--phrase-grammar-path', type=str, required=True, help='path to phrase grammar folder')
     parser.add_argument('--config-path', type=str, required=True, help='path to generator json config')
     parser.add_argument('--out-path', type=str, required=True, help='path where to store generated phrases')
+    parser.add_argument(
+        '--json-out-path', type=str, required=False, help='path where to store generated phrases along with forms'
+    )
     parser.add_argument('--shortest-top-size', type=int, default=100,
                         required=False, help='defines the size of shortest phrases toplist')
     parser.add_argument('--top-path', type=str, required=False, help='path where to store shortest toplist json')
@@ -306,11 +331,15 @@ if __name__ == "__main__":
     FORMAT = '%(asctime)-15s %(message)s'
     logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 
-    generator = Generator('/Users/starost/projects/4yandex27082017/data')
+    generator = Generator(
+        '/Users/starost/projects/4yandex27082017/data',
+        '/Users/starost/projects/treeton/treeton_py/phrase_generation/music_queries/morpho_hints.json'
+    )
+
     do_again = True
     while do_again:
-        generator.generate(args.phrase_grammar_path, args.config_path, args.out_path, args.top_path,
-                           args.shortest_top_size)
+        generator.generate(args.phrase_grammar_path, args.config_path, args.out_path, args.json_out_path,
+                           args.top_path, args.shortest_top_size)
         yes_or_no = input('\nGenerate again? ')
         do_again = yes_or_no.strip().lower() in ['yes', 'y']
 

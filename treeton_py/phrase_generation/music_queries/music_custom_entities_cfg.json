@@ -1,0 +1,20 @@
+{
+  "external_morph_info_path": "./music_queries_inflection_info.json",
+  "form_config": {
+    "special_playlist": {
+      "limit": 3000,
+      "values": [
+        "alice",
+        "chart",
+        "ny_alice_playlist"
+      ],
+      "form": {
+        "type": "switch_on",
+        "target": {
+          "type": "special_playlist",
+          "id": "$special_playlist"
+        }
+      }
+    }
+  }
+}

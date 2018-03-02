@@ -1,6 +1,7 @@
 import attr
 import logging
 import itertools
+import json
 from marisa_trie import Trie
 
 from .morph_interface import MorphEngine, MorphAnResult, SynthResult
@@ -96,6 +97,13 @@ class Paradigm(object):
             diff['elements'] = elements_diff
 
         return diff
+
+
+@attr.s
+class ParadigmIdWithSubstitution:
+    paradigm_id = attr.ib()
+    substituted_prefix = attr.ib()
+    substitution = attr.ib()
 
 
 @attr.s(hash=True)
@@ -213,6 +221,13 @@ class MorphDictionary(MorphEngine):
         return self.categories_by_grammemes.get(grammeme)
 
     def synthesise(self, paradigm_id, gramm_filter):
+        substituted = substitution = None
+
+        if isinstance(paradigm_id, ParadigmIdWithSubstitution):
+            substituted = paradigm_id.substituted_prefix
+            substitution = paradigm_id.substitution
+            paradigm_id = paradigm_id.paradigm_id
+
         paradigm = self.get_paradigm(paradigm_id)
         if not paradigm:
             return None
@@ -223,7 +238,14 @@ class MorphDictionary(MorphEngine):
             if not gramm_filter.issubset(gramm):
                 continue
 
-            result.append(SynthResult(form=self.untrie_lex(pe.form), gramm=gramm))
+            form = self.untrie_lex(pe.form)
+            if substituted:
+                if not form.startswith(substituted):
+                    continue
+
+                form = substitution + form[len(substituted):]
+
+            result.append(SynthResult(form=form, gramm=gramm))
 
         return result
 
@@ -257,6 +279,10 @@ class MorphDictionary(MorphEngine):
                 gramm.add('fem')
                 gramm.add('neut')
 
+        if 'noun' in gramm and 'invar' in gramm:
+            gramm.update(self.grammemes_by_categories['case'])
+            gramm.update(self.grammemes_by_categories['number'])
+
         return frozenset(gramm)
 
     def untrie_lex(self, int_index):
@@ -267,8 +293,7 @@ class MorphDictionary(MorphEngine):
 
         return self._lex_trie.restore_key(int_index)
 
-    def analyse(self, word):
-        normalized_word = self.normalize(word)
+    def _analyse(self, normalized_word):
         if self._lex_trie:
             normalized_word = self._lex_trie.get(normalized_word)
             if not normalized_word:
@@ -284,6 +309,41 @@ class MorphDictionary(MorphEngine):
             for pe in self._paradigm_elements.get(normalized_word, [])
         ]
 
+    def analyse(self, word):
+        normalized_word = self.normalize(word)
+
+        result = []
+
+        if self._hints:
+            hint = self._hints.get(normalized_word)
+
+            if hint:
+                substituted = hint[0]
+                suffix = hint[1]
+
+                assert normalized_word.endswith(suffix)
+
+                suffix_length = len(suffix)
+                substitution = normalized_word[:-suffix_length] if suffix_length else normalized_word
+
+                hint_results = self._analyse(substituted + suffix)
+
+                for morph_an_result in hint_results:
+                    if not morph_an_result.lemma.startswith(substituted):
+                        continue
+
+                    morph_an_result.paradigm_id = ParadigmIdWithSubstitution(
+                        paradigm_id=morph_an_result.paradigm_id,
+                        substituted_prefix=substituted,
+                        substitution=substitution
+                    )
+
+                    morph_an_result.lemma = substitution + morph_an_result.lemma[len(substituted):]
+
+                    result.append(morph_an_result)
+
+        return result + self._analyse(normalized_word)
+
     def __init__(self, light_weight=False):
         self._paradigms = {}  # id -> Paradigm
         self._paradigm_elements = {}  # word -> set of ParadigmElement
@@ -292,6 +352,10 @@ class MorphDictionary(MorphEngine):
         self._gramm_trie = None
         self._gramms_to_gid = None
         self._gid_to_gramms = None
+        self._hints = None
+
+    def load_morph_hints(self,morph_hints_path):
+        self._hints = json.load(open(morph_hints_path))
 
     def get_paradigm(self, paradigm_id):
         return self._paradigms.get(paradigm_id)

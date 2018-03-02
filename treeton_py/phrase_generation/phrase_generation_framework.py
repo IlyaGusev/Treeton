@@ -580,7 +580,7 @@ class PhraseGenerator(object):
         all_possible_references = set()
         self._collect_possible_references(onto_context, [], all_possible_references)
         fail_count = 0
-        while limit and fail_count < 20:
+        while limit and fail_count < 10:
             all_phrase_descriptions = [
                 PhraseDescriptionWithReference(ph, [])
                 for ph in self._grammar.get_outer_phrase_descriptions()
@@ -788,48 +788,67 @@ class PhraseGenerator(object):
 
         return True
 
-    def render_string(self, phrase):
+    def render_strings(self, phrase):
         if phrase.synth_result:
-            result = phrase.synth_result.form.replace("'", " ")
+            form = phrase.synth_result.form
+            result = form.replace("'", " ")
+            result_no_tags = form
         elif phrase.root:
-            root_repr = self.render_string(phrase.root)
+            root_repr, root_repr_no_tags = self.render_strings(phrase.root)
 
             left_children = []
             right_children = []
+            left_children_no_tags = []
+            right_children_no_tags = []
 
             for child_phrases in phrase.children.values():
                 for child_phrase in child_phrases:
-                    child_repr = self.render_string(child_phrase)
+                    child_repr, child_repr_no_tags = self.render_strings(child_phrase)
 
                     if child_repr:
                         if child_phrase.orientation == 'right':
                             list_to_update = right_children
+                            list_to_update_no_tags = right_children_no_tags
                         elif child_phrase.orientation == 'left':
                             list_to_update = left_children
+                            list_to_update_no_tags= left_children_no_tags
                         else:
-                            list_to_update = random.choice([left_children, right_children])
+                            idx = random.choice([0, 1])
+                            list_to_update = [left_children, right_children][idx]
+                            list_to_update_no_tags = [left_children_no_tags, right_children_no_tags][idx]
 
                         index = random.choice(range(len(list_to_update) + 1))
                         list_to_update.insert(index, child_repr)
+                        list_to_update_no_tags.insert(index, child_repr_no_tags)
 
             result = ' '.join(left_children + ([root_repr] if root_repr else []) + right_children)
+            result_no_tags = ' '.join(
+                left_children_no_tags + ([root_repr_no_tags] if root_repr_no_tags else []) + right_children_no_tags
+            )
         else:
             result = ''
+            result_no_tags = ''
 
         left_additional = phrase.prefix + ' ' if phrase.prefix else ''
+        left_additional_no_tags = left_additional
 
         if phrase.tag:
             left_additional += '\''
 
         if phrase.left_punctuator:
             left_additional += phrase.left_punctuator
+            left_additional_no_tags += phrase.left_punctuator
 
         right_additional = phrase.right_punctuator or ''
+        right_additional_no_tags = right_additional
 
         if phrase.tag:
             right_additional += '\'(%s)' % phrase.tag
 
-        return left_additional + result + right_additional
+        return (
+            left_additional + result + right_additional,
+            left_additional_no_tags + result_no_tags + right_additional_no_tags
+        )
 
     @staticmethod
     def _lookup(onto_context, keys):
@@ -1060,7 +1079,7 @@ class PhraseGenerator(object):
                 result.append((matched_onto, phrase_description, reference))
         return result
 
-    _INTERNAL_RETRIES_COUNT = 10
+    _INTERNAL_RETRIES_COUNT = 5
 
     @attr.s(hash=True)
     class ChoosingMemoryKey(object):
@@ -1089,9 +1108,14 @@ class PhraseGenerator(object):
 
             if filtered_variants:
                 for matched_onto, phrase_variant, reference in filtered_variants:
-                    result = self._choose(phrase_variant, matched_onto)
-                    if result:
-                        memorized_filter_variants.append((matched_onto, phrase_variant, reference))
+                    i = PhraseGenerator._INTERNAL_RETRIES_COUNT
+                    while i >= 0:
+                        result = self._choose(phrase_variant, matched_onto)
+                        if result:
+                            memorized_filter_variants.append((matched_onto, phrase_variant, reference))
+                            break
+
+                        i -= 1
 
             self._choosing_memory[mem_key] = memorized_filter_variants
 
@@ -1192,6 +1216,8 @@ class PhraseGenerator(object):
                     random.shuffle(children_candidates)
 
                     candidates_left = True
+                    one_child_found = False
+                    children_must_be = 'common.has_children' in result.root.phrase_description.predecessors
 
                     while candidates_left:
                         candidates_left = False
@@ -1218,7 +1244,9 @@ class PhraseGenerator(object):
                                 if not child_phrase and not children_phrases and not gov_model.optional:
                                     return None
 
-                                if child_phrase and not child_matched_onto and random.choice([0, 1]):
+                                if child_phrase and not child_matched_onto and (
+                                        not children_must_be or one_child_found
+                                    ) and random.choice([0, 1]):
                                     if gov_model.optional or any(children_phrases):
                                         child_phrase = None
 
@@ -1226,8 +1254,14 @@ class PhraseGenerator(object):
                                     result.onto = self._update_onto(result.onto, child_matched_onto)
                                     result.reference_set.update(child_reference_set)
                                     children_phrases.append(child_phrase)
+                                    one_child_found = True
                                 else:
                                     children_phrases.append(None)
+
+                    # TODO переделать этот костыль в нормальный флаг в грамматике
+
+                    if children_must_be and not one_child_found:
+                        return None
 
                     for semantic_role, children_phrases in chosen_children.items():
                         child_phrases = []
@@ -1248,6 +1282,7 @@ class PhraseGenerator(object):
                             child_phrases.append(child_phrase)
 
                         result.children[semantic_role] = child_phrases
+
                 else:
                     # special case - zero element
                     pass

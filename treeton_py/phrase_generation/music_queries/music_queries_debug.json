@@ -1,13 +1,10 @@
 [
   {
-    "repeat": "true",
     "target": {
-      "name": "How Low",
-      "playlist": {
-        "name": "ludacris",
-        "type": "playlist"
+      "proto": {
+        "type": "track"
       },
-      "type": "track"
+      "type": "collection"
     },
     "type": "switch_on"
   }

@@ -1,5 +1,5 @@
 {
-  "number_of_iterations": 1000,
+  "number_of_iterations": 100000,
   "external_morph_info_path": "./music_queries_inflection_info.json",
   "form": [
     {
