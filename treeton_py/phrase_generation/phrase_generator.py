@@ -292,7 +292,8 @@ class Generator:
         logger.info('%d phrases were stored to %s' % (len(shortest_toplist), out_path))
         if shortest_toplist:
             debug_output = '============================\n'
-            for (form, phrase, structured_phrase, reference_set) in random.choices(shortest_toplist, k=10):
+            for _ in range(10):
+                form, phrase, structured_phrase, reference_set = random.choice(shortest_toplist)
                 debug_output += json.dumps(form, indent=2, sort_keys=True, ensure_ascii=False) + '\n'
                 debug_output += structured_phrase + '\n'
                 debug_output += 'reference set: ' + reference_set + '\n\n'
