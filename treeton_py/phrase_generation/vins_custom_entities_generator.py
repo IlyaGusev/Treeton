@@ -152,8 +152,8 @@ if __name__ == "__main__":
     logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 
     generator = Generator(
-        '/Users/starost/projects/4yandex27082017/data',
-        '/Users/starost/projects/treeton/treeton_py/phrase_generation/music_queries/morpho_hints.json'
+        './morph/data/',
+        './phrase_generation/music_queries/morpho_hints.json'
     )
 
     generator.generate(args.phrase_grammar_path, args.config_path, args.out_path)
