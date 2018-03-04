@@ -1,4 +1,4 @@
-import glob
+import glob2 as glob
 import os
 import logging
 import difflib
@@ -52,7 +52,7 @@ class ParadigmsParser:
         morph_dict = MorphDictionary(light_weight=light_weight)
         file_count = 0
         encountered_keys = set()
-        for file in glob.iglob(path+'/**/*', recursive=True):
+        for file in glob.iglob(path+'/**/*'):
             if os.path.isdir(file):
                 continue
 
