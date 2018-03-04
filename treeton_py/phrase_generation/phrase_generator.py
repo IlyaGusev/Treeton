@@ -5,9 +5,10 @@ import os
 import codecs
 import argparse
 import random
-import datetime
 import attr
+import numpy
 
+from multiprocessing import Pool
 from phrase_generation_framework import PhraseGrammar, PhraseGenerator
 from morph.paradigms_parser import ParadigmsParser
 
@@ -172,146 +173,139 @@ def prepare_form(form, config_path, sampling_memory):
     return result
 
 
-class Generator:
-    def __init__(self, morph_path, morph_hints_path=None):
+class GenerationContext:
+    def __init__(
+        self, config_path, phrase_grammar_path, json_out_dir, morph_path, num_processes, morph_hints_path=None
+    ):
         paradigms_parser = ParadigmsParser()
-        self._morph_dict = paradigms_parser.load_dict_from_directory(
+        self.morph_dict = paradigms_parser.load_dict_from_directory(
             morph_path, light_weight=True
         )
         if morph_hints_path:
-            self._morph_dict.load_morph_hints(morph_hints_path)
+            self.morph_dict.load_morph_hints(morph_hints_path)
 
-    def generate(self, phrase_grammar_path, config_path, out_path, json_out_path, top_path, shortest_top_size):
+        self.config_path = config_path
         config_file = open(config_path)
-        config = json.load(config_file)
+        self.config = json.load(config_file)
 
-        external_morph_info_path = config.get('external_morph_info_path')
+        external_morph_info_path = self.config.get('external_morph_info_path')
 
         if external_morph_info_path:
             external_morph_info_path = os.path.join(os.path.dirname(config_path), external_morph_info_path)
-            external_morph_info = json.load(open(external_morph_info_path))
+            self.external_morph_info = json.load(open(external_morph_info_path))
         else:
-            external_morph_info = None
+            self.external_morph_info = None
 
-        phrase_generator = PhraseGenerator(
-            PhraseGrammar(phrase_grammar_path, self._morph_dict),
-            self._morph_dict, external_morph_info=external_morph_info
+        self.phrase_grammar_path = phrase_grammar_path
+        self.num_processes = num_processes
+        self.json_out_dir = json_out_dir
+        self.phrase_generator = None
+
+    def reload_generator(self):
+        self.phrase_generator = PhraseGenerator(
+            PhraseGrammar(self.phrase_grammar_path, self.morph_dict),
+            self.morph_dict, external_morph_info=self.external_morph_info
         )
 
-        shortest_toplist = []
 
-        def context_generator():
-            for form in config['form']:
-                for _ in range(config['number_of_iterations']):
-                    yield (form, config.get('phrase_ids'))
-
+def process_forms(arg):
+    prepared_forms_chunk, json_out_path, example_out_path = arg
+    target_json = []
+    examples = []
+    for form in prepared_forms_chunk:
+        example_saved = False
         unique_phrases = set()
-        unique_phrases_no_tags = {}
-        sampling_memory = SamplingMemory()
-
         n_tries = 0
-        failed_forms = set()
-        for source_form, phrase_ids in context_generator():
-            while True:
-                try:
-                    prepared_form = prepare_form(source_form, config_path, sampling_memory)
-                    form_string = json.dumps(prepared_form, sort_keys=True, indent=2, ensure_ascii=False)
-
-                    if form_string in failed_forms:
-                        if n_tries > 100:
-                            break
-                        n_tries += 1
-                        continue
-
-                    phrases_iterator = phrase_generator.generate(
-                        onto_context=prepared_form, phrase_full_names=phrase_ids
-                    )
-                    structured_phrase = next(phrases_iterator)
-                    if not structured_phrase:
-                        logger.warning('Failed to generate phrase for form:\n%s' % form_string)
-                        failed_forms.add(form_string)
-                        continue
-
-                    phrase, phrase_no_tags = phrase_generator.render_strings(structured_phrase)
-
-                    if phrase in unique_phrases:
-                        if n_tries > 100:
-                            break
-
-                        unique_phrases_no_tags[phrase_no_tags][form_string] = prepared_form
-                        n_tries += 1
-                        continue
-                    n_tries = 0
-                    unique_phrases.add(phrase)
-                    unique_phrases_no_tags[phrase_no_tags] = {form_string: prepared_form}
-                    shortest_toplist.append(
-                        (prepared_form, phrase, str(structured_phrase), str(structured_phrase.reference_set))
-                    )
-
+        while n_tries < 100 and len(unique_phrases) < generation_context.config['number_of_phrases_per_form_sample']:
+            try:
+                phrases_iterator = generation_context.phrase_generator.generate(
+                    onto_context=form, phrase_full_names=generation_context.config.get('phrase_ids')
+                )
+                structured_phrase = next(phrases_iterator)
+                if not structured_phrase:
+                    logger.warning('Failed to generate phrase for form:\n%s' % form)
                     break
-                except Exception as e:
-                    print('skipping form due to error: %s' % e)
-                    logger.exception(e)
 
-        detected_unknowns = phrase_generator.get_detected_unknown_words()
-        if detected_unknowns:
-            logger.warning('Unknown words were detected during generation: %s' % detected_unknowns)
+                tagged_phrase, phrase_no_tags = generation_context.phrase_generator.render_strings(structured_phrase)
 
-        logger.debug(
-            'Phrase usage statistics:\n\t%s' % (
-                '\n\t'.join(['%d: %s' % (stat, name) for name, stat in phrase_generator.get_phrase_usage_statistics()])
-            )
+                if tagged_phrase in unique_phrases:
+                    n_tries += 1
+                    continue
+
+                n_tries = 0
+                unique_phrases.add(tagged_phrase)
+                target_json.append({
+                    "phrase": phrase_no_tags,
+                    "tagged_phrase": tagged_phrase,
+                    "form": form
+                })
+
+                if len(examples) < max(1, int(10 / generation_context.num_processes)) and not example_saved:
+                    examples.append(
+                        (
+                            form, tagged_phrase,
+                            str(structured_phrase),
+                            str(structured_phrase.reference_set)
+                        )
+                    )
+                    example_saved = True
+            except Exception as e:
+                logger.exception(e)
+
+    with codecs.open(json_out_path, mode='w', encoding='utf-8') as fout:
+        json.dump(target_json, fout, indent=2, ensure_ascii=False)
+
+    logger.info('%d phrases were stored to %s' % (len(target_json), json_out_path))
+
+    with codecs.open(example_out_path, 'w', encoding='utf-8') as f_out:
+        f_out.write('============================\n')
+        for form, phrase, structured_phrase, reference_set in examples:
+            f_out.write(json.dumps(form, indent=2, sort_keys=True, ensure_ascii=False) + '\n')
+            f_out.write(structured_phrase + '\n')
+            f_out.write('reference set: ' + reference_set + '\n\n')
+            f_out.write(phrase + '\n')
+            f_out.write('============================\n')
+
+
+def generate():
+    def context_generator():
+        for form in generation_context.config['form']:
+            for _ in range(generation_context.config['number_of_samples_per_form']):
+                yield form
+
+    sampling_memory = SamplingMemory()
+    prepared_forms = {}
+
+    for source_form in context_generator():
+        prepared_form = prepare_form(source_form, generation_context.config_path, sampling_memory)
+        form_string = json.dumps(prepared_form, sort_keys=True, indent=2, ensure_ascii=False)
+        prepared_forms[form_string] = prepared_form
+
+    prepared_forms = iter(numpy.array_split(list(prepared_forms.values()), generation_context.num_processes))
+    out_json_paths = [
+        os.path.join(generation_context.json_out_dir, '%d.json' % i) for i in range(generation_context.num_processes)
+    ]
+    out_example_paths = [
+        os.path.join(generation_context.json_out_dir, '%d.example.txt' % i)
+        for i in range(generation_context.num_processes)
+    ]
+
+    with Pool(processes=generation_context.num_processes) as pool:
+        pool.map(process_forms, zip(prepared_forms, out_json_paths, out_example_paths))
+
+    detected_unknowns = generation_context.phrase_generator.get_detected_unknown_words()
+    if detected_unknowns:
+        logger.warning('Unknown words were detected during generation: %s' % detected_unknowns)
+
+    logger.debug(
+        'Phrase usage statistics:\n\t%s' % (
+            '\n\t'.join([
+                '%d: %s' % (stat, name)
+                for name, stat in generation_context.phrase_generator.get_phrase_usage_statistics()
+            ])
         )
+    )
 
-        shortest_toplist.sort(key=lambda t: len(t[1]))
-
-        with codecs.open(out_path, 'w', encoding='utf-8') as f_out:
-            timestamp = datetime.datetime.now().strftime("%d.%m.%Y, %H:%M:%S")
-            f_out.write(
-                '# This file was autogenerated by phrase_generator.py\n'
-                '# using grammar from %s on %s\n\n' % (phrase_grammar_path, timestamp)
-            )
-            for _, phrase, _, _ in shortest_toplist:
-                f_out.write(phrase)
-                f_out.write('\n')
-
-        if json_out_path:
-            target_json = []
-            for phrase, forms in unique_phrases_no_tags.items():
-                for _, form in forms.items():
-                    target_json.append({
-                        "phrase": phrase,
-                        "form": form
-                    })
-
-            target_json.sort(key=lambda d: d['phrase'])
-
-            with codecs.open(json_out_path, mode='w', encoding='utf-8') as fout:
-                json.dump(target_json, fout, indent=2, ensure_ascii=False)
-
-        logger.info('%d phrases were stored to %s' % (len(shortest_toplist), out_path))
-        if shortest_toplist:
-            debug_output = '============================\n'
-            for _ in range(10):
-                form, phrase, structured_phrase, reference_set = random.choice(shortest_toplist)
-                debug_output += json.dumps(form, indent=2, sort_keys=True, ensure_ascii=False) + '\n'
-                debug_output += structured_phrase + '\n'
-                debug_output += 'reference set: ' + reference_set + '\n\n'
-                debug_output += phrase + '\n'
-                debug_output += '============================\n'
-
-            logger.info('10 random phrases:\n%s' % debug_output)
-
-        if top_path:
-            shortest_toplist = shortest_toplist[0:shortest_top_size]
-
-            toplist_json = json.dumps(
-                shortest_toplist, sort_keys=False, ensure_ascii=False, indent=2, separators=(',', ': ')
-            )
-            with codecs.open(top_path, 'w', encoding='utf8') as f:
-                f.write(toplist_json + '\n')
-
-            logger.info('%d form-phrase pairs were stored to %s' % (len(shortest_top_size), top_path))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Generate phrases using phrase generation framework.\n',
@@ -319,31 +313,40 @@ if __name__ == "__main__":
 
     parser.add_argument('--phrase-grammar-path', type=str, required=True, help='path to phrase grammar folder')
     parser.add_argument('--config-path', type=str, required=True, help='path to generator json config')
-    parser.add_argument('--out-path', type=str, required=True, help='path where to store generated phrases')
     parser.add_argument(
-        '--json-out-path', type=str, required=False, help='path where to store generated phrases along with forms'
+        '--num-processes', type=int, required=False, default=1, help='number of parallel processes to use'
     )
-    parser.add_argument('--shortest-top-size', type=int, default=100,
-                        required=False, help='defines the size of shortest phrases toplist')
-    parser.add_argument('--top-path', type=str, required=False, help='path where to store shortest toplist json')
+    parser.add_argument(
+        '--json-out-dir', type=str, required=False, help='directory where to store generated phrases along with forms'
+    )
 
     args = parser.parse_args()
 
     FORMAT = '%(asctime)-15s %(message)s'
     logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 
-    generator = Generator(
+    generation_context = GenerationContext(
+        args.config_path,
+        args.phrase_grammar_path,
+        args.json_out_dir,
         './morph/data',
+        args.num_processes,
         './phrase_generation/music_queries/morpho_hints.json'
     )
 
     do_again = True
     while do_again:
-        generator.generate(args.phrase_grammar_path, args.config_path, args.out_path, args.json_out_path,
-                           args.top_path, args.shortest_top_size)
+        generation_context.reload_generator()
+        generate()
+        example_lines = []
+        for j in range(args.num_processes):
+            example_path = os.path.join(args.json_out_dir, '%d.example.txt' % j)
+
+            f = open(example_path)
+            for ln in f:
+                example_lines.append(ln)
+
+        logger.debug('Generation finished. Examples:\n%s' % ''.join(example_lines))
+
         yes_or_no = input('\nGenerate again? ')
         do_again = yes_or_no.strip().lower() in ['yes', 'y']
-
-
-
-
