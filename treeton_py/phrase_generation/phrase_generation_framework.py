@@ -580,7 +580,7 @@ class PhraseGenerator(object):
         all_possible_references = set()
         self._collect_possible_references(onto_context, [], all_possible_references)
         fail_count = 0
-        while limit and fail_count < 20:
+        while limit and fail_count < 30:
             all_phrase_descriptions = [
                 PhraseDescriptionWithReference(ph, [])
                 for ph in self._grammar.get_outer_phrase_descriptions()
