@@ -209,48 +209,60 @@ class GenerationContext:
 
 
 def process_forms(arg):
-    prepared_forms_chunk, json_out_path, example_out_path = arg
+    prepared_forms_chunk, json_out_path, example_out_path, errors_out_path = arg
     target_json = []
     examples = []
-    for form in prepared_forms_chunk:
-        example_saved = False
-        unique_phrases = set()
-        n_tries = 0
-        while n_tries < 100 and len(unique_phrases) < generation_context.config['number_of_phrases_per_form_sample']:
-            try:
-                phrases_iterator = generation_context.phrase_generator.generate(
-                    onto_context=form, phrase_full_names=generation_context.config.get('phrase_ids')
-                )
-                structured_phrase = next(phrases_iterator)
-                if not structured_phrase:
-                    logger.warning('Failed to generate phrase for form:\n%s' % form)
-                    break
-
-                tagged_phrase, phrase_no_tags = generation_context.phrase_generator.render_strings(structured_phrase)
-
-                if tagged_phrase in unique_phrases:
-                    n_tries += 1
-                    continue
-
-                n_tries = 0
-                unique_phrases.add(tagged_phrase)
-                target_json.append({
-                    "phrase": phrase_no_tags,
-                    "tagged_phrase": tagged_phrase,
-                    "form": form
-                })
-
-                if len(examples) < max(1, int(10 / generation_context.num_processes)) and not example_saved:
-                    examples.append(
-                        (
-                            form, tagged_phrase,
-                            str(structured_phrase),
-                            str(structured_phrase.reference_set)
-                        )
+    with codecs.open(errors_out_path, 'w', encoding='utf-8') as error_out:
+        for form in prepared_forms_chunk:
+            example_saved = False
+            unique_phrases = set()
+            n_tries = 0
+            while n_tries < 100 and (
+                len(unique_phrases) < generation_context.config['number_of_phrases_per_form_sample']
+            ):
+                try:
+                    phrases_iterator = generation_context.phrase_generator.generate(
+                        onto_context=form, phrase_full_names=generation_context.config.get('phrase_ids')
                     )
-                    example_saved = True
-            except Exception as e:
-                logger.exception(e)
+                    structured_phrase = next(phrases_iterator)
+                    if not structured_phrase:
+                        error_out.write('Failed to generate phrase for form:\n%s\n' % form)
+                        break
+
+                    tagged_phrase, phrase_no_tags = generation_context.phrase_generator.render_strings(
+                        structured_phrase
+                    )
+
+                    if tagged_phrase in unique_phrases:
+                        n_tries += 1
+                        continue
+
+                    n_tries = 0
+                    unique_phrases.add(tagged_phrase)
+                    target_json.append({
+                        "phrase": phrase_no_tags,
+                        "tagged_phrase": tagged_phrase,
+                        "form": form
+                    })
+
+                    if len(examples) < max(1, int(10 / generation_context.num_processes)) and not example_saved:
+                        examples.append(
+                            (
+                                form, tagged_phrase,
+                                str(structured_phrase),
+                                str(structured_phrase.reference_set)
+                            )
+                        )
+                        example_saved = True
+                except Exception as e:
+                    logger.exception(e)
+
+            if len(unique_phrases) < generation_context.config['number_of_phrases_per_form_sample']:
+                error_out.write('Generated only %d phrases instead of %d for form:\n%s\n' % (
+                    len(unique_phrases),
+                    generation_context.config['number_of_phrases_per_form_sample'],
+                    form
+                ))
 
     with codecs.open(json_out_path, mode='w', encoding='utf-8') as fout:
         json.dump(target_json, fout, indent=2, ensure_ascii=False)
@@ -289,9 +301,13 @@ def generate():
         os.path.join(generation_context.json_out_dir, '%d.example.txt' % i)
         for i in range(generation_context.num_processes)
     ]
+    out_error_paths = [
+        os.path.join(generation_context.json_out_dir, '%d.errors' % i)
+        for i in range(generation_context.num_processes)
+    ]
 
     with Pool(processes=generation_context.num_processes) as pool:
-        pool.map(process_forms, zip(prepared_forms, out_json_paths, out_example_paths))
+        pool.map(process_forms, zip(prepared_forms, out_json_paths, out_example_paths, out_error_paths))
 
     detected_unknowns = generation_context.phrase_generator.get_detected_unknown_words()
     if detected_unknowns:
