@@ -118,18 +118,27 @@ def sample_from_file(params, config_path, sampling_memory):
     return random.choice(big_list)
 
 
+def _get_parsed_json_list(path, config_path, sampling_memory)
+    path = os.path.join(os.path.dirname(config_path), path)
+
+    if path not in sampling_memory.parsed_json_lists:
+        with codecs.open(path, 'r', encoding='utf-8') as f_in:
+            l = json.load(f_in)
+            assert isinstance(l, list)
+            sampling_memory.parsed_json_lists[path] = l
+
+    return sampling_memory.parsed_json_lists[path]
+
+
 def sample_from_json(params, config_path, sampling_memory):
-    big_list = []
-    for p in params[SAMPLE_FROM_JSON_LIST]:
-        path = os.path.join(os.path.dirname(config_path), p)
+    big_list = None
 
-        if path not in sampling_memory.parsed_json_lists:
-            with codecs.open(path, 'r', encoding='utf-8') as f_in:
-                l = json.load(f_in)
-                assert isinstance(l, list)
-                sampling_memory.parsed_json_lists[path] = l
-
-        big_list += sampling_memory.parsed_json_lists[path]
+    if len(params[SAMPLE_FROM_JSON_LIST]) == 1:
+        big_list = _get_parsed_json_list(params[SAMPLE_FROM_JSON_LIST][0], config_path, sampling_memory)
+    else:
+        big_list = []
+        for p in params[SAMPLE_FROM_JSON_LIST]:
+            big_list += _get_parsed_json_list(p, config_path, sampling_memory)
     return random.choice(big_list)
 
 
