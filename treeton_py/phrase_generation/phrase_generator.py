@@ -118,7 +118,7 @@ def sample_from_file(params, config_path, sampling_memory):
     return random.choice(big_list)
 
 
-def _get_parsed_json_list(path, config_path, sampling_memory)
+def _get_parsed_json_list(path, config_path, sampling_memory):
     path = os.path.join(os.path.dirname(config_path), path)
 
     if path not in sampling_memory.parsed_json_lists:
@@ -308,6 +308,8 @@ def generate():
 
             n_tries = 0
             prepared_forms[form_string] = prepared_form
+            if len(prepared_forms) % 100:
+                logger.info('%d forms were chosen' % len(prepared_forms))
             break
 
         if n_tries == 100:
