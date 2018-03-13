@@ -125,16 +125,20 @@ class Generator:
             with codecs.open(target_path, mode='w', encoding='utf-8') as fout:
                 json.dump(target_dict, fout, indent=2, ensure_ascii=False)
 
-        detected_unknowns = phrase_generator.get_detected_unknown_words()
+        detected_unknowns = sorted(phrase_generator.get_detected_unknown_words().items(), key=lambda x: x[1])
         if detected_unknowns:
             logger.warning('Unknown words were detected during generation: %s' % detected_unknowns)
 
         logger.debug(
             'Phrase usage statistics:\n\t%s' % (
-                '\n\t'.join(['%d: %s' % (stat, name) for name, stat in phrase_generator.get_phrase_usage_statistics()])
+                '\n\t'.join([
+                    '%d: %s' % (stat, name)
+                    for name, stat in sorted(
+                        phrase_generator.get_phrase_usage_statistics().items(), key=lambda x: (-x[1], x[0])
+                    )
+                ])
             )
         )
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Generate vins custom entities using phrase generation framework.\n',

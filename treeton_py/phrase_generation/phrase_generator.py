@@ -131,8 +131,6 @@ def _get_parsed_json_list(path, config_path, sampling_memory):
 
 
 def sample_from_json(params, config_path, sampling_memory):
-    big_list = None
-
     if len(params[SAMPLE_FROM_JSON_LIST]) == 1:
         big_list = _get_parsed_json_list(params[SAMPLE_FROM_JSON_LIST][0], config_path, sampling_memory)
     else:
@@ -218,7 +216,7 @@ class GenerationContext:
 
 
 def process_forms(arg):
-    prepared_forms_chunk, json_out_path, example_out_path, errors_out_path = arg
+    prepared_forms_chunk, json_out_path, example_out_path, errors_out_path, stats_out_path = arg
     target_json = []
     examples = []
     with codecs.open(errors_out_path, 'w', encoding='utf-8') as error_out:
@@ -287,6 +285,14 @@ def process_forms(arg):
             f_out.write(phrase + '\n')
             f_out.write('============================\n')
 
+    phrase_stat = generation_context.phrase_generator.get_phrase_usage_statistics()
+    unknown_words_stat = generation_context.phrase_generator.get_detected_unknown_words()
+
+    with codecs.open(stats_out_path, mode='w', encoding='utf-8') as fout:
+        json.dump(
+            {'phrase_stat': phrase_stat, 'unknown_words_stat': unknown_words_stat}, fout, indent=2, ensure_ascii=False
+        )
+
 
 def generate():
     def context_generator():
@@ -328,11 +334,27 @@ def generate():
         os.path.join(generation_context.json_out_dir, '%d.errors' % i)
         for i in range(generation_context.num_processes)
     ]
+    out_stats_paths = [
+        os.path.join(generation_context.json_out_dir, '%d.stats.json' % i)
+        for i in range(generation_context.num_processes)
+    ]
 
     with Pool(processes=generation_context.num_processes) as pool:
-        pool.map(process_forms, zip(prepared_forms, out_json_paths, out_example_paths, out_error_paths))
+        pool.map(
+            process_forms, zip(prepared_forms, out_json_paths, out_example_paths, out_error_paths, out_stats_paths)
+        )
 
-    detected_unknowns = generation_context.phrase_generator.get_detected_unknown_words()
+    phrase_stats = {}
+    unknown_word_stats = {}
+
+    for stat_path in out_stats_paths:
+        stat = json.load(open(stat_path))
+        for k, v in stat['phrase_stat'].items():
+            phrase_stats[k] = phrase_stats.get(k, 0) + v
+        for k, v in stat['unknown_words_stat'].items():
+            unknown_word_stats[k] = unknown_word_stats.get(k, 0) + v
+
+    detected_unknowns = sorted(unknown_word_stats.items(), key=lambda x: x[1])
     if detected_unknowns:
         logger.warning('Unknown words were detected during generation: %s' % detected_unknowns)
 
@@ -340,7 +362,7 @@ def generate():
         'Phrase usage statistics:\n\t%s' % (
             '\n\t'.join([
                 '%d: %s' % (stat, name)
-                for name, stat in generation_context.phrase_generator.get_phrase_usage_statistics()
+                for name, stat in sorted(phrase_stats.items(), key=lambda x: (-x[1], x[0]))
             ])
         )
     )

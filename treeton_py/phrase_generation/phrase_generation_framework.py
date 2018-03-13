@@ -567,10 +567,10 @@ class PhraseGenerator(object):
         }
 
     def get_detected_unknown_words(self):
-        return sorted(self._detected_unknown_words.items(), key=lambda x: x[1])
+        return self._detected_unknown_words
 
     def get_phrase_usage_statistics(self):
-        return sorted(self._phrase_usage_stats.items(), key=lambda x: (-x[1], x[0]))
+        return self._phrase_usage_stats
 
     def generate(self, onto_context, phrase_full_names=None, limit=1):
         logger.debug('Generating phrases for onto_context %s' % onto_context)
