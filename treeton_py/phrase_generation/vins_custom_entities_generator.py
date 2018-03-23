@@ -55,69 +55,75 @@ class Generator:
             target_dict = {}
             limit = entity_cfg['limit']
             for entity_id in entity_cfg['values']:
-                form = deepcopy(entity_cfg['form'])
-                if not Generator._substitute_in_form(form, '$' + entity_name, entity_id):
-                    logger.warning("Unable to substitute entity id %s, skipping" % entity_id)
-                    continue
+                forms = entity_cfg['form']
+
+                if not isinstance(forms, list):
+                    forms = [forms]
 
                 unique_phrases = set()
 
-                n_tries = 0
-                failed_forms = set()
-                for i in range(limit):
-                    if i % 100:
-                        logger.info('Iteration %d, number of unique phrases %d' % (i, len(unique_phrases)))
+                for form in forms:
+                    form = deepcopy(form)
+                    if not Generator._substitute_in_form(form, '$' + entity_name, entity_id):
+                        logger.warning("Unable to substitute entity id %s, skipping" % entity_id)
+                        continue
 
-                    while True:
-                        try:
-                            form_string = json.dumps(form, sort_keys=True, indent=2, ensure_ascii=False)
+                    n_tries = 0
+                    failed_forms = set()
+                    for i in range(limit):
+                        if i % 100:
+                            logger.info('Iteration %d, number of unique phrases %d' % (i, len(unique_phrases)))
 
-                            if form_string in failed_forms:
-                                if n_tries > 20:
-                                    break
-                                n_tries += 1
-                                continue
+                        while True:
+                            try:
+                                form_string = json.dumps(form, sort_keys=True, indent=2, ensure_ascii=False)
 
-                            phrases_iterator = phrase_generator.generate(onto_context=form)
-                            structured_phrase = next(phrases_iterator)
-                            if not structured_phrase:
-                                logger.warning('Failed to generate phrase for form:\n%s' % form_string)
-                                failed_forms.add(form_string)
-                                continue
+                                if form_string in failed_forms:
+                                    if n_tries > 20:
+                                        break
+                                    n_tries += 1
+                                    continue
 
-                            phrase, _ = phrase_generator.render_strings(structured_phrase)
+                                phrases_iterator = phrase_generator.generate(onto_context=form)
+                                structured_phrase = next(phrases_iterator)
+                                if not structured_phrase:
+                                    logger.warning('Failed to generate phrase for form:\n%s' % form_string)
+                                    failed_forms.add(form_string)
+                                    continue
 
-                            tag_mention = "'(%s)" % entity_name
-                            splitted_phrase = phrase.split(tag_mention)
+                                phrase, _ = phrase_generator.render_strings(structured_phrase)
 
-                            if len(splitted_phrase) > 2:
-                                logger.warning("phrase '%s' with multiple tag %s detected" % (phrase, entity_name))
+                                tag_mention = "'(%s)" % entity_name
+                                splitted_phrase = phrase.split(tag_mention)
 
-                            if len(splitted_phrase) < 2:
-                                logger.warning("phrase '%s' without tag %s detected" % (phrase, entity_name))
-                                phrase = None
-                            else:
-                                quote_index = splitted_phrase[0].rfind("'")
+                                if len(splitted_phrase) > 2:
+                                    logger.warning("phrase '%s' with multiple tag %s detected" % (phrase, entity_name))
 
-                                if quote_index is None:
-                                    logger.warning("Corrupted markup in phrase %s" % phrase)
+                                if len(splitted_phrase) < 2:
+                                    logger.warning("phrase '%s' without tag %s detected" % (phrase, entity_name))
                                     phrase = None
                                 else:
-                                    phrase = splitted_phrase[0][quote_index+1:].strip()
+                                    quote_index = splitted_phrase[0].rfind("'")
 
-                            if not phrase or phrase in unique_phrases:
-                                if n_tries > 20:
-                                    break
-                                n_tries += 1
-                                continue
+                                    if quote_index is None:
+                                        logger.warning("Corrupted markup in phrase %s" % phrase)
+                                        phrase = None
+                                    else:
+                                        phrase = splitted_phrase[0][quote_index+1:].strip()
 
-                            n_tries = 0
-                            unique_phrases.add(phrase)
+                                if not phrase or phrase in unique_phrases:
+                                    if n_tries > 20:
+                                        break
+                                    n_tries += 1
+                                    continue
 
-                            break
-                        except Exception as e:
-                            print('skipping form due to error: %s' % e)
-                            logger.exception(e)
+                                n_tries = 0
+                                unique_phrases.add(phrase)
+
+                                break
+                            except Exception as e:
+                                print('skipping form due to error: %s' % e)
+                                logger.exception(e)
 
                 target_dict[entity_id] = sorted(unique_phrases)
 
