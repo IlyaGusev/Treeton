@@ -354,18 +354,22 @@ def generate():
         for k, v in stat['unknown_words_stat'].items():
             unknown_word_stats[k] = unknown_word_stats.get(k, 0) + v
 
-    detected_unknowns = sorted(unknown_word_stats.items(), key=lambda x: x[1])
-    if detected_unknowns:
-        logger.warning('Unknown words were detected during generation: %s' % detected_unknowns)
+    with codecs.open(os.path.join(generation_context.json_out_dir, 'stats.log'), mode='w', encoding='utf-8') as fout:
+        detected_unknowns = sorted(unknown_word_stats.items(), key=lambda x: x[1])
+        if detected_unknowns:
+            s = 'Unknown words were detected during generation: %s' % detected_unknowns
+            logger.warning(s)
+            fout.write(s + '\n')
 
-    logger.debug(
-        'Phrase usage statistics:\n\t%s' % (
+        s = 'Phrase usage statistics:\n\t%s' % (
             '\n\t'.join([
                 '%d: %s' % (stat, name)
                 for name, stat in sorted(phrase_stats.items(), key=lambda x: (-x[1], x[0]))
             ])
         )
-    )
+
+        logger.debug(s)
+        fout.write(s + '\n')
 
 
 if __name__ == "__main__":
