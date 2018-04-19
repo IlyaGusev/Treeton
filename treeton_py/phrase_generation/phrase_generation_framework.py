@@ -19,7 +19,6 @@ def list_data_files(directory):
         path = os.path.join(directory, name)
 
         name, _ = os.path.splitext(name)
-        name, _ = os.path.splitext(name)
 
         if os.path.isfile(path):
             yield name, path
