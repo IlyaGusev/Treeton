@@ -301,27 +301,14 @@ def generate():
                 yield form
 
     sampling_memory = SamplingMemory()
-    prepared_forms = {}
+    prepared_forms = []
 
     for source_form in context_generator():
-        n_tries = 0
-        while n_tries < 100:
-            prepared_form = prepare_form(source_form, generation_context.config_path, sampling_memory)
-            form_string = json.dumps(prepared_form, sort_keys=True, indent=2, ensure_ascii=False)
-            if form_string in prepared_forms:
-                n_tries += 1
-                continue
+        prepared_forms.append(prepare_form(source_form, generation_context.config_path, sampling_memory))
+        if len(prepared_forms) % 100:
+            logger.info('%d forms were chosen' % len(prepared_forms))
 
-            n_tries = 0
-            prepared_forms[form_string] = prepared_form
-            if len(prepared_forms) % 100:
-                logger.info('%d forms were chosen' % len(prepared_forms))
-            break
-
-        if n_tries == 100:
-            raise RuntimeError('Wrong form data, unable to sample enough unique forms')
-
-    groups = numpy.array_split(list(prepared_forms.values()), generation_context.num_processes)
+    groups = numpy.array_split(prepared_forms, generation_context.num_processes)
     prepared_forms = iter(groups)
     out_json_paths = [
         os.path.join(generation_context.json_out_dir, '%d.json' % i) for i in range(generation_context.num_processes)
