@@ -1,10 +1,9 @@
 [
   {
     "target": {
-      "proto": {
-        "type": "track"
-      },
-      "type": "collection"
+      "name": "Аквариум",
+      "type": "artist",
+      "definite": "true"
     },
     "type": "switch_on"
   }

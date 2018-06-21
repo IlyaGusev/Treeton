@@ -90,6 +90,7 @@ class PhraseDescriptionComposite(PhraseDescription):
 @attr.s(repr=False)
 class PhraseDescriptionLookup(PhraseDescription):
     label = attr.ib(default=attr.Factory(list))
+    keep_categories = attr.ib(default=attr.Factory(frozenset))
 
 
 @attr.s(repr=False)
@@ -314,8 +315,10 @@ class PhraseGrammar(object):
                 phrase_description.lex_variants = list(lex)
             elif lookup:
                 assert isinstance(lookup, str)
-
                 phrase_description.lookup = lookup.split('.')
+                keep_categories = data.get('keep_categories')
+                if keep_categories:
+                    phrase_description.keep_categories = frozenset(keep_categories)
             elif content_variants:
                 if predecessors or raw_gov_models or tag or punctuation_info or gramm or context or onto:
                     # noinspection PyTypeChecker
@@ -427,7 +430,6 @@ class PhraseGrammar(object):
 
             if agree:
                 assert isinstance(agree, list)
-
                 gov_model.agree_categories = frozenset(agree)
 
             gramm = raw_gov_model.get('gramm')
@@ -1194,6 +1196,25 @@ class PhraseGenerator(object):
             elif isinstance(phrase_description, PhraseDescriptionLookup):
                 result.lex = [self._lookup(onto, phrase_description.lookup)]
                 self._calculate_morph_an_results(result)
+                if phrase_description.keep_categories:
+                    extracted_values = {category: None for category in phrase_description.keep_categories}
+
+                    for morphan_result in result.morph_an_results:
+                        for gr in morphan_result.gramm:
+                            category = self._morph_engine.get_category_for_grammeme(gr)
+
+                            if not category or category not in extracted_values:
+                                continue
+
+                            old_value = extracted_values.get(category)
+                            if old_value and old_value != gr:
+                                extracted_values.pop(category)
+                            elif not old_value:
+                                extracted_values[category] = gr
+
+                    extracted_values = {gr for gr in extracted_values.values() if gr}
+                    if extracted_values:
+                        self._update_phrase_grammemes(result, extracted_values)
             else:
                 assert isinstance(phrase_description, PhraseDescriptionComposite)
 
