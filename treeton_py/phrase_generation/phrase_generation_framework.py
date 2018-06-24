@@ -61,7 +61,6 @@ class PhraseDescription(object):
     is_inline = attr.ib(default=False)
     predecessors = attr.ib(default=attr.Factory(set))
     gov_models = attr.ib(default=attr.Factory(dict))
-    punctuation_info = attr.ib(default=attr.Factory(dict))
     grammemes = attr.ib(default=attr.Factory(set))
 
     @staticmethod
@@ -128,7 +127,6 @@ class PhraseDescriptionContext(object):
     predecessors = attr.ib(default=attr.Factory(frozenset))
     gov_models = attr.ib(default=attr.Factory(tuple))
     onto = attr.ib(default=None)
-    punctuation_info = attr.ib(default=attr.Factory(tuple))
     grammemes = attr.ib(default=attr.Factory(frozenset))
 
 
@@ -248,7 +246,6 @@ class PhraseGrammar(object):
                 phrase_description.gov_models = self._system_of_tuples_to_dict(context.gov_models)
                 phrase_description.onto = self._system_of_tuples_to_dict(context.onto)
                 phrase_description.tag = context.tag
-                phrase_description.punctuation_info = self._system_of_tuples_to_dict(context.punctuation_info)
                 phrase_description.grammemes = set(context.grammemes)
 
             predecessors = data.get('extends')
@@ -263,8 +260,6 @@ class PhraseGrammar(object):
 
                     if predecessor_phrase_descr.tag:
                         phrase_description.tag = predecessor_phrase_descr.tag
-                    if predecessor_phrase_descr.punctuation_info:
-                        phrase_description.punctuation_info = dict(predecessor_phrase_descr.punctuation_info)
 
                     phrase_description.grammemes = _update_grammemes(
                         phrase_description.grammemes, predecessor_phrase_descr.grammemes, self._morph_engine
@@ -294,11 +289,6 @@ class PhraseGrammar(object):
                 assert isinstance(tag, str)
                 phrase_description.tag = tag
 
-            punctuation_info = data.get('punctuation')
-            if punctuation_info:
-                assert isinstance(punctuation_info, dict)
-                phrase_description.punctuation_info = punctuation_info
-
             gramm = data.get('gramm')
 
             if gramm:
@@ -320,14 +310,13 @@ class PhraseGrammar(object):
                 if keep_categories:
                     phrase_description.keep_categories = frozenset(keep_categories)
             elif content_variants:
-                if predecessors or raw_gov_models or tag or punctuation_info or gramm or context or onto:
+                if predecessors or raw_gov_models or tag or gramm or context or onto:
                     # noinspection PyTypeChecker
                     context = PhraseDescriptionContext(
                         predecessors=frozenset(phrase_description.predecessors),
                         onto=self._dict_to_system_of_tuples(phrase_description.onto),
                         grammemes=frozenset(phrase_description.grammemes),
                         gov_models=self._dict_to_system_of_tuples(phrase_description.gov_models),
-                        punctuation_info=self._dict_to_system_of_tuples(phrase_description.punctuation_info),
                         tag=phrase_description.tag
                     )
 
@@ -408,7 +397,7 @@ class PhraseGrammar(object):
 
         for semantic_role, raw_children_variants in data.items():
             if semantic_role in {
-                'root', 'extends', 'gov', 'tag', 'punctuation', 'gramm', 'onto', 'reference', 'content'
+                'root', 'extends', 'gov', 'tag', 'gramm', 'onto', 'reference', 'content'
             }:
                 continue
 
@@ -501,8 +490,6 @@ class Phrase(object):
     parent = attr.ib(default=None)
     lex = attr.ib(default=None)
     tag = attr.ib(default=None)
-    left_punctuator = attr.ib(default=None)
-    right_punctuator = attr.ib(default=None)
     prefix = attr.ib(default=None)
     orientation = attr.ib(default=None)
 
@@ -551,14 +538,22 @@ class Phrase(object):
         return result
 
 
+@attr.s
+class TaggedString(object):
+    string = attr.ib()
+    tag = attr.ib(default=None)
+
+
 class PhraseGenerator(object):
-    def __init__(self, grammar, morph_engine, external_morph_info=None):
+    def __init__(self, grammar, morph_engine, external_morph_info=None, skip_untagged=False, filter_tags=None):
         self._grammar = grammar
         assert self._grammar.is_loaded(), 'Phrase generator can not be built over the uninitialized grammar'
         self._morph_engine = morph_engine
         self._external_morph_info = external_morph_info
         self._detected_unknown_words = {}
         self._choosing_memory = {}
+        self._skip_untagged = skip_untagged
+        self._filter_tags = set(filter_tags) if filter_tags else set()
         self._phrase_usage_stats = {
             ph.name: 0
             for ph in chain(
@@ -615,6 +610,10 @@ class PhraseGenerator(object):
                 fail_count += 1
                 continue
 
+            if self._skip_untagged and not self._find_some_tag(phrase):
+                fail_count += 1
+                continue
+
             fail_count = 0
 
             limit -= 1
@@ -636,6 +635,20 @@ class PhraseGenerator(object):
         for _, child_phrases in phrase.children.items():
             for child in child_phrases:
                 self._collect_used_names(child, target_set)
+
+    def _find_some_tag(self, phrase):
+        if phrase.tag:
+            return True
+
+        if phrase.root and self._find_some_tag(phrase.root):
+            return True
+
+        for _, child_phrases in phrase.children.items():
+            for child in child_phrases:
+                if self._find_some_tag(child):
+                    return True
+
+        return False
 
     def _update_usage_stats(self, phrase):
         all_names = set()
@@ -789,67 +802,68 @@ class PhraseGenerator(object):
 
         return True
 
-    def render_strings(self, phrase):
+    def _render_strings(self, phrase):
         if phrase.synth_result:
             form = phrase.synth_result.form
-            result = form.replace("'", " ")
-            result_no_tags = form
+            result = [TaggedString(form.replace("'", " "))]
         elif phrase.root:
-            root_repr, root_repr_no_tags = self.render_strings(phrase.root)
+            root_repr = self._render_strings(phrase.root)
 
             left_children = []
             right_children = []
-            left_children_no_tags = []
-            right_children_no_tags = []
 
             for child_phrases in phrase.children.values():
                 for child_phrase in child_phrases:
-                    child_repr, child_repr_no_tags = self.render_strings(child_phrase)
+                    child_repr = self.render_strings(child_phrase)
 
                     if child_repr:
                         if child_phrase.orientation == 'right':
                             list_to_update = right_children
-                            list_to_update_no_tags = right_children_no_tags
                         elif child_phrase.orientation == 'left':
                             list_to_update = left_children
-                            list_to_update_no_tags= left_children_no_tags
                         else:
                             idx = random.choice([0, 1])
                             list_to_update = [left_children, right_children][idx]
-                            list_to_update_no_tags = [left_children_no_tags, right_children_no_tags][idx]
 
                         index = random.choice(range(len(list_to_update) + 1))
                         list_to_update.insert(index, child_repr)
-                        list_to_update_no_tags.insert(index, child_repr_no_tags)
 
-            result = ' '.join(left_children + ([root_repr] if root_repr else []) + right_children)
-            result_no_tags = ' '.join(
-                left_children_no_tags + ([root_repr_no_tags] if root_repr_no_tags else []) + right_children_no_tags
-            )
+            result = left_children + ([root_repr] if root_repr else []) + right_children
         else:
-            result = ''
-            result_no_tags = ''
+            result = []
 
-        left_additional = phrase.prefix + ' ' if phrase.prefix else ''
-        left_additional_no_tags = left_additional
+        if phrase.prefix:
+            result = [phrase.prefix] + result
 
-        if phrase.tag:
-            left_additional += '\''
+        render_tag = phrase.tag and phrase.tag not in self._filter_tags
 
-        if phrase.left_punctuator:
-            left_additional += phrase.left_punctuator
-            left_additional_no_tags += phrase.left_punctuator
+        if render_tag:
+            for tagged_string in result:
+                tagged_string.tag = phrase.tag
 
-        right_additional = phrase.right_punctuator or ''
-        right_additional_no_tags = right_additional
+        return result
 
-        if phrase.tag:
-            right_additional += '\'(%s)' % phrase.tag
+    def render_strings(self, phrase):
+        tagged_strings_list = self._render_strings(phrase)
 
-        return (
-            left_additional + result + right_additional,
-            left_additional_no_tags + result_no_tags + right_additional_no_tags
-        )
+        untagged_string = ' '.join([ts.string for ts in tagged_strings_list])
+
+        prev_tagged_string = TaggedString(None)
+
+        for tagged_string in tagged_strings_list:
+            previous_tag = prev_tagged_string.tag
+            current_tag = tagged_string.tag
+
+            if current_tag != previous_tag:
+                if current_tag:
+                    tagged_string.string = "'%s" % tagged_string.string
+
+                if previous_tag:
+                    prev_tagged_string.string = "%s'(%s)" % (prev_tagged_string.string, previous_tag)
+
+        tagged_string = ' '.join([ts.string for ts in tagged_strings_list])
+
+        return tagged_string, untagged_string
 
     @staticmethod
     def _lookup(onto_context, keys):
@@ -1306,11 +1320,6 @@ class PhraseGenerator(object):
                 else:
                     # special case - zero element
                     pass
-
-        if result.root:
-            punct_info = result.root.phrase_description.punctuation_info
-            result.left_punctuator = punct_info.get('left')
-            result.right_punctuator = punct_info.get('right')
 
         if not result.tag:
             result.tag = phrase_description.tag

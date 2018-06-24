@@ -211,7 +211,9 @@ class GenerationContext:
     def reload_generator(self):
         self.phrase_generator = PhraseGenerator(
             PhraseGrammar(self.phrase_grammar_path, self.morph_dict),
-            self.morph_dict, external_morph_info=self.external_morph_info
+            self.morph_dict, external_morph_info=self.external_morph_info,
+            skip_untagged=self.config.get('skip_untagged_phrases', False),
+            filter_tags=self.config.get('filter_tags', [])
         )
 
 

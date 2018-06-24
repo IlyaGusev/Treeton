@@ -46,7 +46,9 @@ class Generator:
 
         phrase_generator = PhraseGenerator(
             PhraseGrammar(phrase_grammar_path, self._morph_dict),
-            self._morph_dict, external_morph_info=external_morph_info
+            self._morph_dict, external_morph_info=external_morph_info,
+            skip_untagged=config.get('skip_untagged_phrases', False),
+            filter_tags=config.get('filter_tags', [])
         )
 
         form_config = config['form_config']
