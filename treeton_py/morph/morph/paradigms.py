@@ -205,6 +205,9 @@ class MorphDictionary(MorphEngine):
         },
         'animacy': {
             'anim', 'inan'
+        },
+        'politeness': {
+            'polite', 'impolite'
         }
     }
 
@@ -234,11 +237,12 @@ class MorphDictionary(MorphEngine):
 
         result = []
         for pe in paradigm.elements:
-            gramm = self.count_gramm(pe)
+            form = self.untrie_lex(pe.form)
+
+            gramm = self.count_gramm(pe, form)
             if not gramm_filter.issubset(gramm):
                 continue
 
-            form = self.untrie_lex(pe.form)
             if substituted:
                 if not form.startswith(substituted):
                     continue
@@ -253,7 +257,7 @@ class MorphDictionary(MorphEngine):
     def normalize(s):
         return s.strip().lower()
 
-    def count_gramm(self, paradigm_element):
+    def count_gramm(self, paradigm_element, form):
         if isinstance(paradigm_element.info.gramm, int):
             gramm = paradigm_element.info.gramm | paradigm_element.parent_paradigm.gramm
 
@@ -283,6 +287,12 @@ class MorphDictionary(MorphEngine):
             gramm.update(self.grammemes_by_categories['case'])
             gramm.update(self.grammemes_by_categories['number'])
 
+        if 'imp' in gramm:
+            if form.endswith('те'):
+                gramm.add('polite')
+            else:
+                gramm.add('impolite')
+
         return frozenset(gramm)
 
     def untrie_lex(self, int_index):
@@ -293,18 +303,20 @@ class MorphDictionary(MorphEngine):
 
         return self._lex_trie.restore_key(int_index)
 
-    def _analyse(self, normalized_word):
+    def _analyse(self, source_word):
         if self._lex_trie:
-            normalized_word = self._lex_trie.get(normalized_word)
+            normalized_word = self._lex_trie.get(source_word)
             if not normalized_word:
                 return []
+        else:
+            normalized_word = source_word
 
         return [
             MorphAnResult(
                 paradigm_id=pe.parent_paradigm.id,
                 lemma=self.untrie_lex(pe.parent_paradigm.lemma),
                 accent=pe.info.get_accent_place(),
-                gramm=self.count_gramm(pe)
+                gramm=self.count_gramm(pe, source_word)
             )
             for pe in self._paradigm_elements.get(normalized_word, [])
         ]
@@ -372,6 +384,9 @@ class MorphDictionary(MorphEngine):
         self._paradigms[paradigm.id] = paradigm
 
         for pe in paradigm.elements:
+            if isinstance(pe, UnparsedStarlingParadigm):
+                continue
+
             list_of_pe = self._paradigm_elements.get(pe.form)
 
             if not list_of_pe:

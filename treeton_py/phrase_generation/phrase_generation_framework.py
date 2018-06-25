@@ -802,6 +802,13 @@ class PhraseGenerator(object):
 
         return True
 
+    def _flatten(self, source_list, target_list):
+        for e in source_list:
+            if isinstance(e, list):
+                self._flatten(e, target_list)
+            else:
+                target_list.append(e)
+
     def _render_strings(self, phrase):
         if phrase.synth_result:
             form = phrase.synth_result.form
@@ -814,7 +821,7 @@ class PhraseGenerator(object):
 
             for child_phrases in phrase.children.values():
                 for child_phrase in child_phrases:
-                    child_repr = self.render_strings(child_phrase)
+                    child_repr = self._render_strings(child_phrase)
 
                     if child_repr:
                         if child_phrase.orientation == 'right':
@@ -828,18 +835,21 @@ class PhraseGenerator(object):
                         index = random.choice(range(len(list_to_update) + 1))
                         list_to_update.insert(index, child_repr)
 
-            result = left_children + ([root_repr] if root_repr else []) + right_children
+            result = []
+            self._flatten(left_children, result)
+            result = result + root_repr
+            self._flatten(right_children, result)
         else:
             result = []
-
-        if phrase.prefix:
-            result = [phrase.prefix] + result
 
         render_tag = phrase.tag and phrase.tag not in self._filter_tags
 
         if render_tag:
             for tagged_string in result:
                 tagged_string.tag = phrase.tag
+
+        if phrase.prefix:
+            result = [TaggedString(phrase.prefix)] + result
 
         return result
 
@@ -860,6 +870,12 @@ class PhraseGenerator(object):
 
                 if previous_tag:
                     prev_tagged_string.string = "%s'(%s)" % (prev_tagged_string.string, previous_tag)
+
+            prev_tagged_string = tagged_string
+
+        previous_tag = prev_tagged_string.tag
+        if previous_tag:
+            prev_tagged_string.string = "%s'(%s)" % (prev_tagged_string.string, previous_tag)
 
         tagged_string = ' '.join([ts.string for ts in tagged_strings_list])
 
