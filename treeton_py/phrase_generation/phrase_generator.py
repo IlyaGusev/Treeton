@@ -206,6 +206,7 @@ class GenerationContext:
         self.phrase_grammar_path = phrase_grammar_path
         self.num_processes = num_processes
         self.json_out_dir = json_out_dir
+        os.makedirs(json_out_dir, exist_ok=True)
         self.phrase_generator = None
 
     def reload_generator(self):
