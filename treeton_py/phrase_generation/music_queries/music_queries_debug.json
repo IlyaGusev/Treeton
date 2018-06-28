@@ -7,14 +7,5 @@
       "need_similar": "exact"
     },
     "type": "switch_on"
-  },
-  {
-    "target": {
-      "name": "Аквариум",
-      "type": "artist",
-      "definite": "true",
-      "need_similar": "need_similar"
-    },
-    "type": "switch_on"
   }
 ]
