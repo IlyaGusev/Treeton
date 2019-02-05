@@ -15,5 +15,5 @@ setup(
     author='Anatoli Starostin',
     author_email='anatoli.starostin@gmail.com',
     packages=find_packages(),
-    include_package_data=True, install_requires=['attr']
+    include_package_data=True, install_requires=['attr', 'telegram']
 )
