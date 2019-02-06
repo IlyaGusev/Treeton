@@ -9,12 +9,9 @@ if __name__ == "__main__":
                                                                          ' paths within the config file are counted '
                                                                          'from the directory to which it belongs)')
     args = parser.parse_args()
-
     config = yaml.load(open(args.config_path))
-
     movie_dir = os.path.dirname(args.config_path)
-
-    nodes_info = {}
+    node_dir_info = {}
 
     for node_name, node in config.items():
         node_dir = os.path.join(movie_dir,node_name)
@@ -30,10 +27,10 @@ if __name__ == "__main__":
                 raise RuntimeError('Unable to find source mp4 for node %s' % node_name)
 
         print('Found source mp4 for node %s: %s' % (node_name, source_path))
-        nodes_info[node_name] = (node_dir, os.path.basename(source_path))
+        node_dir_info[node_dir] = os.path.basename(source_path)
 
     wd = os.getcwd()
-    for node_dir, source_name in nodes_info.items():
+    for node_dir, source_name in node_dir_info.items():
         os.chdir(node_dir)
         subprocess.run([
             "ffmpeg","-hide_banner","-y","-i",source_name,
