@@ -1,0 +1,14 @@
+verse:
+  bifurcation:
+    timing: -15
+    length: 10
+    options:
+      to_chorus:
+        title: 'Хитовый припев'
+        target_id: chorus
+      to_rap:
+        title: 'Рэп вставка'
+        target_id: rap
+    default: random
+chorus:
+rap:

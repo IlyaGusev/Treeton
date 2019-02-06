@@ -1,5 +1,0 @@
-README
-interactivity.egg-info/PKG-INFO
-interactivity.egg-info/SOURCES.txt
-interactivity.egg-info/dependency_links.txt
-interactivity.egg-info/top_level.txt
