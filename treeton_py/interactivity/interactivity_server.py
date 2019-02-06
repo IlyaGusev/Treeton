@@ -9,10 +9,6 @@ def create_app():
         'test_movie': InteractiveMovie('data/test_movie/script.yaml')
     }
 
-    @app.route('/')
-    def hello():
-        return "Hello world!"
-
     @app.route('/stream_movie/<movie_id>/<node_id>/get_chunk/<chunk_name>', methods=['GET'])
     def stream_chunk(movie_id,node_id,chunk_name):
         return send_file('data/%s/%s/%s' % (movie_id, node_id, chunk_name), mimetype = 'video/ts')
